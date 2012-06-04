@@ -1,0 +1,242 @@
+
+% Cal Poly Thesis
+% 
+% based on UC Thesis format
+%
+% modified by Mark Barry 2/07.
+%
+
+
+
+
+\documentclass[12pt]{ucthesis}
+
+%\newif\ifpdf
+%\ifx\pdfoutput\undefined
+%    \pdffalse % we are not running PDFLaTeX
+%\else
+%\pdfoutput=1 % we are running PDFLaTeX
+%\pdftrue \fi
+
+\usepackage{textcomp}
+\usepackage{url}
+\usepackage{listings}
+\lstset{
+	language=[Visual]C++,
+	keywordstyle=\bfseries\ttfamily\color[rgb]{0,0,1},
+	identifierstyle=\ttfamily,
+	commentstyle=\color[rgb]{0.133,0.545,0.133},
+	stringstyle=\ttfamily\color[rgb]{0.627,0.126,0.941},
+	showstringspaces=false,
+	basicstyle=\small,
+	numberstyle=\footnotesize,
+	numbers=left,
+	stepnumber=1,
+	numbersep=10pt,
+	tabsize=2,
+	breaklines=true,
+	prebreak = \raisebox{0ex}[0ex][0ex]{\ensuremath{\hookleftarrow}},
+	breakatwhitespace=false,
+	aboveskip={1.5\baselineskip},
+  columns=fixed,
+  upquote=true,
+  extendedchars=true
+% frame=single,
+% backgroundcolor=\color{lbcolor},
+}
+\usepackage{color}
+%\ifpdf
+
+    \usepackage[pdftex]{graphicx}
+    % Update title and author below...
+    \usepackage[pdftex,plainpages=false,breaklinks=true,colorlinks=true,urlcolor=blue,citecolor=blue,%
+                                       linkcolor=blue,bookmarks=true,bookmarksopen=true,%
+                                       bookmarksopenlevel=3,pdfstartview=FitV,
+                                       pdfauthor=Christopher Gibson,
+                                       pdftitle=Point-Based Color Bleeding With Volumes,
+                                       pdfkeywords={thesis, masters, cal poly, volume rendering, global illumination}
+                                       ]{hyperref}
+    %Options with pdfstartview are FitV, FitB and FitH
+    \pdfcompresslevel=1
+
+%\else
+%    \usepackage{graphicx}
+%\fi
+
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage[letterpaper]{geometry}
+\usepackage[overload]{textcase}
+
+
+
+%%%%%\bibliographystyle{abbrv}
+
+\setlength{\parindent}{0.25in} \setlength{\parskip}{6pt}
+
+\geometry{verbose,nohead,tmargin=1.25in,bmargin=1in,lmargin=1.5in,rmargin=1.3in}
+
+\setcounter{tocdepth}{2}
+
+
+% Different font in captions (single-spaced, bold) ------------
+\newcommand{\captionfonts}{\small\bf\ssp}
+
+\makeatletter  % Allow the use of @ in command names
+\long\def\@makecaption#1#2{%
+  \vskip\abovecaptionskip
+  \sbox\@tempboxa{{\captionfonts #1: #2}}%
+  \ifdim \wd\@tempboxa >\hsize
+    {\captionfonts #1: #2\par}
+  \else
+    \hbox to\hsize{\hfil\box\@tempboxa\hfil}%
+  \fi
+  \vskip\belowcaptionskip}
+\makeatother   % Cancel the effect of \makeatletter
+% ---------------------------------------
+
+\begin{document}
+
+% Declarations for Front Matter
+
+% Update fields below!
+\title{FlexRender: A distributed rendering architecture for ray tracing huge
+scenes on commodity hardware.}
+\author{Robert Edward Somers}
+\degreemonth{June} \degreeyear{2012} \degree{Master of Science}
+\defensemonth{June} \defenseyear{2012}
+\numberofmembers{3} \chair{Zo\"{e} Wood, Ph.D.} \othermemberA{Chris Lupo, Ph.D.} \othermemberB{Phillip Nico, Ph.D.} \field{Computer Science} \campus{San Luis Obispo}
+\copyrightyears{seven}
+
+
+
+\maketitle
+
+\begin{frontmatter}
+
+% Custom made for Cal Poly (by Mark Barry, modified by Andrew Tsui).
+\copyrightpage
+
+% Custom made for Cal Poly (by Andrew Tsui).
+\committeemembershippage
+
+\begin{abstract}
+
+As the quest for more realistic computer graphics marches steadily on, the
+demand for rich and detailed imagery is greater than ever. Unfortunately, our
+appetite for large and complex geometry is quickly outpacing advances in the
+hardware used to render it. Scenes with hundreds of millions or even billions
+of polygons are not only desired, they are demanded.
+
+Techniques such as normal mapping and level of detail have attempted to address
+the problem by reducing the amount of geometry in a scene. This is problematic
+for applications that desire or demand access to the scene's full geometric
+complexity at render time. More recently, out-of-core techniques have provided
+methods for rendering large scenes when the working set is larger than the
+available system memory.
+
+We propose a distributed rendering architecture based on message-passing that
+is designed to partition scene geometry across a cluster of commodity machines
+in a spatially coherent way, allowing the entire scene to remain in-core and
+enabling the construction of hierarchical spatial acceleration structures in
+parallel. The results of our implementation show over an order of magnitude
+speedup in rendering time compared the traditional approach, while keeping
+memory overhead for message queuing around 1\%.
+
+\textbf{TODO: Triple check that claim with the Toy Store scene results.}
+
+\end{abstract}
+
+%\begin{acknowledgements}
+
+%   Thank you...
+
+%\end{acknowledgements}
+
+
+\tableofcontents
+
+
+\listoftables
+
+\listoffigures
+
+\end{frontmatter}
+
+\pagestyle{plain}
+
+
+
+
+\renewcommand{\baselinestretch}{1.66}
+
+
+% ------------- Main chapters here --------------------
+
+
+
+
+
+\chapter{Introduction}
+\label{intro}
+
+\textbf{TODO}
+
+\section{Our Contribution}
+\label{contribution}
+
+\textbf{TODO}
+
+\chapter{Background}
+\label{background}
+
+\textbf{TODO}
+
+\section{Light and Radiometry}
+\label{radiometry}
+
+\textbf{TODO}
+
+\section{Ray Tracing}
+\label{raytracing}
+
+\textbf{TODO}
+
+\section{Bounding Volume Hierarchies}
+\label{bvhs}
+
+\textbf{TODO}
+
+\section{Morton Coding and the Z-Order Curve}
+\label{mortoncoding}
+
+\textbf{TODO}
+
+\chapter{Related Work}
+\label{relatedwork}
+
+\textbf{TODO}
+
+\chapter{FlexRender Architecture}
+\label{architecture}
+
+\textbf{TODO}
+
+\chapter{Results}
+\label{results}
+
+\textbf{TODO}
+
+\chapter{Future Work}
+\label{futurework}
+
+\textbf{TODO}
+
+\clearpage
+\bibliography{pcbex}
+\bibliographystyle{plain}
+%\addcontentsline{toc}{chapter}{Bibliography}
+
+\section*{Image Results}
+
+\end{document} much faster 
