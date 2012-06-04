@@ -180,22 +180,100 @@ memory overhead for message queuing around 1\%.
 \chapter{Introduction}
 \label{intro}
 
-\textbf{TODO}
+\emph{Rendering}, the process of taking the description of a scene and turning
+it into a visual image, has advanced at an incredible pace in recent
+years. Many techniques have been developed to turn these descriptions into
+pixels, and countless more have targeted weaknesses or challenges with those
+algorithms. As the field continues to evolve and grow, new algorithms will be
+born, others will fall out of favor and die, and some will soldier on. Only
+one thing remains constant: The desire to bring our computational models ever
+closer to mimicking physical reality.
 
 \section{Geometric Complexity}
 \label{complexity}
 
-\textbf{TODO: why do we want lots of surface geometry?}
+At the heart of mimicking reality is describing the world we wish to show. In
+computer graphics, this has traditionally been done by defining surfaces. While
+exciting developments in volume rendering techniques happen on regular basis,
+it's unlikely we'll abandon using surfaces any time soon. Unfortunately for
+volumes, they are inherently an $n^3$ problem and $n^3$ is not a particularly
+friendly number in the field of Computer Science.
+
+For now and the foreseeable future, it seems, surfaces will be our bread and
+butter. Many methods have been developed for describing surfaces to computer
+programs, such as level sets, implicitly defined surfaces from mathematical
+equations, and curvalinear forms such as parametric splines. The undisputed
+champion of surface representations, however, has been the polygonal mesh.
+Countless man-years of research and development has yielded efficient
+techniques for processing meshes of interconnected polygons at blistering
+speeds, and many other surface representations are ultimately converted to a
+polygonal mesh at some stage of the rendering pipeline.
+
+Meshes are easy for artists to work with because they represent discrete
+points in space and the connectivity between those points (rather than abstract
+equations). However, their core advantage is also their core drawback. Because
+everything is defined explicitly, meshes with fine levels of detail have
+significantly higher storage requirements. Thus, as the demand for higher
+visual fidelity increases, the natural tendency is to increase geometric
+complexity.
 
 \section{Parallel Rendering}
 \label{parallel}
 
-\textbf{TODO: graphics, and ray tracing in particular is "embarrassingly parallel"}
+Graphics has long been said to be a problem that is \emph{embarrasingly parallel},
+given that many graphics algorithms operate on pixels independently. Graphics
+processing units (GPUs) have exploited this fact for many years to achieve
+amazing throughput of graphics primitives in real-time. Ray tracing in
+particular (discussed more thoroughly in \ref{raytracing}) is commonly
+paraded as the poster child for parallel processing.
+
+Unfortunately the story isn't all unicorns and rainbows. While processor
+architectures have become exceedingly parallel and posted impressive
+improvements, the memory hierarchy hasn't had time to catch up. In fact,
+if anything the problem has gotten more muddled and complicated as architects
+have scrambled to dump layer upon layer of cache in front of the memory
+controller to try to hide the fact that keeping these chips hot all the time is
+actually an extremely challenging problem.
+
+Because of this, there is a lot more to parallel rendering than initially meets
+the eye. Graphics may indeed by highly parallel, but it is also hugely memory
+intensive, and that fact is actively working \emph{against} its parallel
+nature on current architectures.
 
 \section{Our Contribution}
 \label{contribution}
 
-\textbf{TODO}
+This paper presents the architecture of FlexRender, a ray tracer designed for
+rendering huge scenes with high geometric complexity on commodity hardware. We
+specifically target commodity hardware because it currently has an excellent
+cost to performance ratio, but still typically lacks enough memory to fit large
+scenes entirely in RAM.
+
+Current strategies for parallelizing a render across a cluster of commodity
+machines are limited to having each worker compute a separate ``slice" of the
+image, but do nothing to manage the high cost associated with large scene
+assets.
+
+Thus, our work describes the following core contributions:
+
+\begin{enumerate}
+    \item A system for ray tracing which uses the pooled memory of a cluster of
+        commodity machines to keep the entire scene in-core.
+    \item A method for passing ray messages between workers in the cluster with
+        enough state to never require a response.
+    \item An extension to the stackless BVH traversal algorithm presented by
+        Hapala et al. \cite{hapala:2011} that makes it possible to suspend
+        traversal at one worker and resume it at another.
+    \item A discussion of the concepts involved and an analysis of the resulting
+        implementation.
+\end{enumerate}
+
+In particular, we show that FlexRender can achieve speedups that exceed an
+order of magnitude over the traditional parallelization approach, and can
+naturally self-regulate the cluster of workers to keep the memory overhead due
+to message queueing around 1\% of each worker's system memory.
+
+\textbf{TODO: Triple check that claim with Toy Store results.}
 
 \chapter{Background}
 \label{background}
