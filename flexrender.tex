@@ -251,7 +251,7 @@ specifically target commodity hardware because it currently has an excellent
 cost to performance ratio, but still typically lacks enough memory to fit large
 scenes entirely in RAM.
 
-Current strategies for parallelizing a render across a cluster of commodity
+Current strategies for parallelizing a renderer across a cluster of commodity
 machines are limited to having each worker compute a separate ``slice" of the
 image, but do nothing to manage the high cost associated with large scene
 assets.
@@ -475,35 +475,146 @@ most-significant to least-significant bit.
 \chapter{FlexRender Architecture}
 \label{architecture}
 
-\textbf{TODO}
+In this section, we describe the design of FlexRender as well as its operation
+while rendering an image. We briefly cover the design of the shared graphics
+machinery for both the baseline implementation and FlexRender in \ref{types}.
+We cover the network architecture and roles of machines in FlexRender
+specifically in \ref{workers}, and the process of preparing the cluster for
+rendering in \ref{sync} and \ref{parallelbvh}.
+
+At its core, machines in the cluster are just glorified ray processors. We
+discuss how the machines manage rays in \ref{queues}, how they generate work
+and keep memory usage stable in \ref{primaryrays}, how we decide when and where
+to send rays over the network in \ref{traversal}, and how shading is computed
+when lights and occluders may exist anywhere in the cluster in \ref{shading}.
+
+Finally, we wrap up our tour with discussion of how we monitor the progress
+of the render in \ref{stats} and how we composite the final image from its
+components in \ref{synthesis}.
 
 \section{Organization and Design}
 \label{organization}
 
-\textbf{TODO}
-
 \subsection{General Types and Subsystems}
 \label{types}
 
-\textbf{TODO: meshes, materials, textures, shaders, fat rays, graphics computation machinery is shared between baseline and flexrender}
+The core graphics machinery in FlexRender is fairly standard. A scene consists
+of a collection of \emph{meshes}, which are stored as indexed face sets of vertices
+(positions with normals and texture coordinates) and faces.
+
+Each mesh is a assigned a \emph{material}, which is responsible for drawing the
+mesh. A material consists of a \emph{shader} and potentially a set of bindings
+from \emph{textures} to names in the shader.
+
+A \emph{shader} is a piece of code that is run to compute the lighting on a
+surface at a particular point. The implementation of shaders in FlexRender is
+through extensions to the Lua \cite{lua} programming language using the LuaJIT
+\cite{luajit} implementation for speed. A shader may do any (or none) of the
+following:
+
+\begin{enumerate}
+    \item Sample textures based on the name bindings assigned in the material
+        definition.
+    \item Compute a light value based on some implementation of a mathematical
+        shading model and the local informtion at the point being shaded.
+    \item Accumulate computed light values into the primary RGB buffers, or
+        any auxilliary named buffer.
+    \item Cast additional rays into the scene.
+\end{enumerate}
+
+\textbf{TODO: example phong shader snippet}
+
+A \emph{texture} is a either a 2D array of pixels (for image textures) or
+a snippet of Lua code (for procedural textures) that defines the value of
+something across a surface. They are most commonly used for providing colored
+detail across the face of a triangle.
+
+All of the code used in graphics computation is shared between both our baseline
+implementation and FlexRender. This ensures fair comparisons when we analyze our
+results in \ref{results}.
+
+The currency of computation and core message type in FlexRender is the
+\emph{fat ray}. They are so named because they carry additional state
+information along with their geometric definition of an origin and a direction.
+Their counterparts, \emph{slim rays}, consist of only the geometric components.
+
+Specifically, a fat ray contains the following information:
+
+\begin{description}
+    \item[Type] \hfill \\
+        The kind of ray this is. Described in \ref{process}.
+    \item[Source Pixel] \hfill \\
+        The pixel this ray contributes to.
+    \item[Bounce Count] \hfill \\
+        The number of times this ray has reflected off a surface.
+    \item[Origin and Direction] \hfill \\
+        Geometric properties of the ray.
+    \item[Transmittance] \hfill \\
+        The amount this ray contribute to the source pixel.
+    \item[Emission] \hfill \\
+        The emitted light (from a light source) carried along the ray.
+        Described in \ref{shading}.
+    \item[Target] \hfill \\
+        The expected intersection point of the ray. Described in \ref{shading}.
+    \item[Traversal State] \hfill \\
+        The state of the top-level BVH traversal. Described in \ref{traversal}.
+    \item[Hit Record] \hfill \\
+        Record of the worker, mesh, and $t$ value of the nearest intersection
+        so far.
+    \item[Current Worker] \hfill \\
+        The worker this ray should be sent to (over the network).
+    \item[Workers Touched] \hfill \\
+        The number of workers this ray has touched so far. Not necessary for
+        rendering. Only used for analysis.
+    \item[Next Pointer] \hfill \\
+        Invalid after being passed over the network. Used for locally queueing
+        rays as described in \ref{queues}.
+\end{description}
+
+In total, the size of a fat ray is 128 bytes.
+
+When new rays are cast into the scene from a shader, the results of that trace
+are not immediately available. Instead the trace queues that ray for processing
+and the traversal and shading systems ensure that the result of the trace will be
+included in the final image.
+
+In order for linearity and energy conservation to be respected, certain values
+are inherited from the parent ray. In particular the source pixel is inherited
+(so the ray contributes to the correct pixel in the final image) and the
+desired transmittance along the new ray is multiplied with the transmittance of
+the parent ray (to ensure energy conservation is preserved).
+
+Casting rays from the shader can be used to implement several common visual
+effects:
+
+\begin{description}
+    \item[Alpha Masking] Cast a new ray in the same direction with the full
+        transmittance.
+    \item[Reflection] Cast a new ray in the reflected direction with some
+        fraction of the transmittance.
+    \item[Refraction] Cast a new ray in the refracted direction with some
+        fraction of the transmittance.
+    \item[Monte Carlo Global Illumination] Cast sample rays in the surface
+        hemisphere with fractional transmittances based on the number of samples.
+\end{description}
 
 \subsection{Workers and the Renderer}
 \label{workers}
 
 \textbf{TODO: network architecture}
 
-\section{Configuration and Setup}
-\label{config}
+\section{Render Preparation}
+\label{prep}
 
 \textbf{TODO}
 
-\subsection{Synchronization and Asset Distribution}
-\label{config}
+\subsection{Configuration and Asset Distribution}
+\label{sync}
 
 \textbf{TODO: basic config data, establish worker connections, chunk up morton address space, read meshes, compute morton codes of their centroids, distribute to workers (also mention reading data off of shared network storage)}
 
 \subsection{Parallel Construction of Spatial Acceleration Structures}
-\label{parallbvh}
+\label{parallelbvh}
 
 \textbf{TODO: build BVH per mesh, then BVH of mesh bounds (still local), then send worker bounds to renderer and build BVH of worker bounds, distribute that to everyone}
 
