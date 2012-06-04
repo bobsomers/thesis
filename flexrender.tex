@@ -182,6 +182,16 @@ memory overhead for message queuing around 1\%.
 
 \textbf{TODO}
 
+\section{Geometric Complexity}
+\label{complexity}
+
+\textbf{TODO: why do we want lots of surface geometry?}
+
+\section{Parallel Rendering}
+\label{parallel}
+
+\textbf{TODO: graphics, and ray tracing in particular is "embarrassingly parallel"}
+
 \section{Our Contribution}
 \label{contribution}
 
@@ -195,32 +205,137 @@ memory overhead for message queuing around 1\%.
 \section{Light and Radiometry}
 \label{radiometry}
 
-\textbf{TODO}
+\textbf{TODO: light is linear}
 
 \section{Ray Tracing}
 \label{raytracing}
 
-\textbf{TODO}
+\textbf{TODO: general overview}
 
 \section{Bounding Volume Hierarchies}
 \label{bvhs}
 
-\textbf{TODO}
+\textbf{TODO: basic structure and traversal, algorithmic performance, etc.}
 
 \section{Morton Coding and the Z-Order Curve}
 \label{mortoncoding}
 
-\textbf{TODO}
+\textbf{TODO: spatially coherent mapping of 3D space to 1D space}
 
 \chapter{Related Work}
 \label{relatedwork}
 
 \textbf{TODO}
 
+\section{Big Geometry Workarounds}
+\label{managingcomplexity}
+
+\textbf{TODO}
+
+\subsection{Normal Mapping}
+\label{normalmaps}
+
+\textbf{TODO: seminal work}
+
+\subsection{Level of Detail}
+\label{levelofdetail}
+
+\textbf{TODO: seminal work}
+
+\subsection{Out-of-Core}
+\label{outofcore}
+
+\textbf{TODO: dreamworks PBGI paper, panta ray for directional occlusion}
+
+\section{Parallel Rendering}
+\label{parallelbg}
+
+\textbf{TODO}
+
+\subsection{Cooperative Networked Rendering}
+\label{networked}
+
+\textbf{TODO: how we differ from kilauea (refer to subsections) \cite{kato:2002}}
+
+\subsection{General Purpose GPU Rendering}
+\label{gpgpu}
+
+\textbf{TODO: ray batching, parallel BVH construction, branchy/memory drawbacks (shaders)}
+
 \chapter{FlexRender Architecture}
 \label{architecture}
 
 \textbf{TODO}
+
+\section{Organization and Design}
+\label{organization}
+
+\textbf{TODO}
+
+\subsection{General Types and Subsystems}
+\label{types}
+
+\textbf{TODO: meshes, materials, textures, shaders, fat rays, graphics computation machinery is shared between baseline and flexrender}
+
+\subsection{Workers and the Renderer}
+\label{workers}
+
+\textbf{TODO: network architecture}
+
+\section{Configuration and Setup}
+\label{config}
+
+\textbf{TODO}
+
+\subsection{Synchronization and Asset Distribution}
+\label{config}
+
+\textbf{TODO: basic config data, establish worker connections, chunk up morton address space, read meshes, compute morton codes of their centroids, distribute to workers (also mention reading data off of shared network storage)}
+
+\subsection{Parallel Construction of Spatial Acceleration Structures}
+\label{parallbvh}
+
+\textbf{TODO: build BVH per mesh, then BVH of mesh bounds (still local), then send worker bounds to renderer and build BVH of worker bounds, distribute that to everyone}
+
+\section{Ray Processing}
+\label{process}
+
+\textbf{TODO: mention the 3 types of rays}
+
+\subsection {Ray Queues}
+\label{queues}
+
+\textbf{TODO: prefer rays more likely to terminate}
+
+\subsection{Primary Ray Casting}
+\label{primaryrays}
+
+\textbf{TODO: runaway detection and prevention}
+
+\subsection{Distributed BVH Traversal}
+\label{traversal}
+
+\textbf{TODO: modifications to stackless method}
+
+\subsection{Illumination and Shading}
+\label{shading}
+
+\textbf{TODO: casting light rays backwards (light to object) and pushing them back into the system, checking for hit within epsilon of target}
+
+\section{Render Completion}
+\label{completion}
+
+\textbf{TODO}
+
+\subsection{Statistics and Monitoring}
+\label{stats}
+
+\textbf{TODO: primary casting progress, rays produced and killed, queue sizes}
+
+\subsection{Image Synthesis}
+\label{synthesis}
+
+\textbf{TODO: request worker buffers and merge them into a single buffer linearly}
 
 \chapter{Results}
 \label{results}
@@ -232,8 +347,23 @@ memory overhead for message queuing around 1\%.
 
 \textbf{TODO}
 
+\section{System Optimizations}
+\label{optimizations}
+
+\textbf{TODO: replace morton coding with analysis and baking step, distribute all assets except geometry (eliminate final shading hop), prepass step to determine which workers should cast which primary rays}
+
+\section{Memory Optimizations}
+\label{memory}
+
+\textbf{TODO: ray pools, cache line size, and queue alignment}
+
+\section{GPGPU and Heterogenous Architectures}
+\label{hetergenous}
+
+\textbf{TODO: network interface, GPU workers, 10 GigE user mode DMA}
+
 \clearpage
-\bibliography{pcbex}
+\bibliography{flexrender}
 \bibliographystyle{plain}
 %\addcontentsline{toc}{chapter}{Bibliography}
 
