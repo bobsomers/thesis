@@ -348,7 +348,35 @@ observations, which FlexRender explicitly exploits:
 \section{Morton Coding and the Z-Order Curve}
 \label{morton}
 
-\textbf{TODO: spatially coherent mapping of 3D space to 1D space}
+Morton coding is a method for mapping coordinates in multidimensional space to
+a single dimension. In particular, walking the multidimensional space with a
+Morton coding produces a space-filling Z-order curve.
+
+\textbf{TODO: pictures of Z-order curves}
+
+More concretely, FlexRender needs a way to distribute a large scene to many
+machines in a spatially coherent way. If the geometry on each machine consists
+of a localized patch of the overall geometry, it allows us minimize communication
+between the machines, and thus, only pay the network cost when we absolutely need
+to (described in depth in \ref{traversal}).
+
+Because the Morton coding produces a spatially coherent traversal of 3D space,
+dividing up the 1D Morton code address space among all the machines participating
+in the render gives a reasonable assurance of spatial locality for the geometry
+sent to each machine.
+
+The Morton coding is relatively simple to implement. For example, say that
+we wish to map a point $P$ in a region of 3D space (defined by its bounding extents
+$min$ and $max$) to a Morton coded 64-bit integer. Discretizing each axis evenly
+allows for 21 bits per axis, yielding a 63-bit address space (and one unused bit
+in the integer).
+
+Computing the Morton code is simply a matter calculating the 21-bit discretized
+component of $P$ along each axis, then shifting the components from each axis
+into the 64-bit integer one bit at a time in a round robin fashion, from the
+most-significant to least-significant bit.
+
+\textbf{TODO: pseudocode listing of morton code computation}
 
 \chapter{Related Work}
 \label{relatedwork}
