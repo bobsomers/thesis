@@ -343,7 +343,61 @@ observations, which FlexRender explicitly exploits:
 \section{Bounding Volume Hierarchies}
 \label{bvhs}
 
-\textbf{TODO: basic structure and traversal, algorithmic performance, etc.}
+Bounding volume hierarchies, or BVHs, are essentially an application of binary
+search to 3D space. In ray tracing, the vast majority of time is spent
+computing intersection tests to determine whether a ray intersects a given
+primitive. BVHs allow us to search 3D space for a potential intersection in a
+binary tree fashion, pruning off large numbers of primitives with a single
+test. Since it is effectively binary search, it's unsurprising that it reduces
+intersection searching from linear time $O(n)$ to logarithmic time $O(log\;n)$.
+
+\textbf{TODO: picture of bvh}
+
+BVHs are trees where each node is defined by a bounding box that describes
+a region of 3D space. All of the primitives in the scene that are within that
+region of space are child nodes in the tree. Each node has two direct children,
+which also define bounding boxes within that subregion of space. Nodes which
+have other bounding box nodes as their children are \emph{interior} nodes.
+\emph{Leaf} nodes in the tree define a bounding box around a single primitive.
+
+For storage efficiency and better cache performance, after the tree structure
+is built using a typical linked-memory data structure, it's flattened into a
+linear array of nodes by walking the tree in a depth-first traversal. This means
+that the left-hand child of the node at index $n$ is located at index $n + 1$
+in the array of nodes. Each node stores an offset index to its right-hand child.
+Because the indices are relative to the array and not the array's location in
+memory, they are safe to pass back and forth between machines and require no
+address translation.
+
+To traverse the tree looking for intersections, we begin by testing the root
+node's bounding box for an intersection. If the ray intersects the bounding
+box, we recursively test each of the node's children. Once we hit a leaf node,
+we perform an actual ray-primitive intersection test to determine if the ray
+hits the primitive.
+
+Because this algorithm is naturally recursive, refactoring it as an iterative
+algorithm still requires a traversal stack of child nodes that we need visit on
+our way back up. Since this stack is unique for
+each ray, the entire stack would need to be carried along with each ray in the
+FlexRender design (described in detail in \ref{process}). In addition, the
+stack could potentially be large if the scene is large and the tree is deep, so
+it would be ideal if we had a method for traversing the tree efficiently without
+the need to maintain a traversal stack.
+
+A method for doing so is described by Hapala et al. in
+\emph{Efficient Stack-less BVH Traversal for Ray Tracing} \cite{hapala:2011}.
+Their key insight is that if parent links are stored in the tree, the same
+traversal can be achieved using a three-state automaton describing the direction
+you came from when you reached the current node (i.e. from the \emph{parent},
+from the \emph{sibling}, or from the \emph{child}). They show that their
+traversal algorithm produces identical tree walks and never retests nodes that
+have already been tested.
+
+FlexRender leverages this traversal algorithm due it its low state storage
+requirements. Each ray only needs to know the index of the current node it's
+traversing and the state of the traversal automaton. The extensions made
+to the algorithm to support suspending traversal and resuming it on another
+machine are described in \ref{traversal}.
 
 \section{Morton Coding and the Z-Order Curve}
 \label{morton}
