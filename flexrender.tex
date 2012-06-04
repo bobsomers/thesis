@@ -601,7 +601,30 @@ effects:
 \subsection{Workers and the Renderer}
 \label{workers}
 
-\textbf{TODO: network architecture}
+There are two potential roles a machine can play during the rendering process.
+
+\begin{description}
+    \item[Worker] These machines receive a chunk of the scene and act as ray
+        processors to compute intersections and shading values. They produce
+        an image that is a component of the final render. There may be an
+        arbitrary number of them participating in a render.
+    \item[Renderer] This machine reads in the scene data and distributes it to
+        the workers. Once rendering begins it monitors the status of the each
+        worker and halts any potential runaway situations (see \ref{primaryrays}).
+        When the renderer decides the process is complete, it requests
+        the image components from each worker and merges them into the final
+        image. There is only a single renderer in any given cluster and it is
+        the machine the user directly interacts with.
+\end{description}
+
+From a network perspective, the architecture is simply client/server connected
+in a star configuration. Each worker exposes a server which receives and
+processes messages, and holds client connections open to every other worker for
+passing messages around the cluster. The renderer also holds a client connection
+to every worker for sending configuration data, preparing up the cluster for rendering
+(described in \ref{sync}), and monitoring render progress (described in \ref{stats}).
+
+\textbf{TODO: diagram of network architecture}
 
 \section{Render Preparation}
 \label{prep}
