@@ -235,6 +235,8 @@ have scrambled to dump layer upon layer of cache in front of the memory
 controller to try to hide the fact that keeping these chips hot all the time is
 actually an extremely challenging problem.
 
+\textbf{TODO: graph of latencies in the memory hierarchy}
+
 Because of this, there is a lot more to parallel rendering than initially meets
 the eye. Graphics may indeed by highly parallel, but it is also hugely memory
 intensive, and that fact is actively working \emph{against} its parallel
@@ -260,7 +262,7 @@ Thus, our work describes the following core contributions:
     \item A system for ray tracing which uses the pooled memory of a cluster of
         commodity machines to keep the entire scene in-core.
     \item A method for passing ray messages between workers in the cluster with
-        enough state to never require a response.
+        enough state to never require a reply message.
     \item An extension to the stackless BVH traversal algorithm presented by
         Hapala et al. \cite{hapala:2011} that makes it possible to suspend
         traversal at one worker and resume it at another.
@@ -278,12 +280,60 @@ to message queueing around 1\% of each worker's system memory.
 \chapter{Background}
 \label{background}
 
-\textbf{TODO}
+The FlexRender architecture builds on the four fundamenal building blocks
+described here. First, we discuss the linearity of light (\ref{radiometry}),
+which is critical to understanding why FlexRender produces a correct composite
+image from pieces rendered by different machines. Next, we give a general
+overview of ray tracing (\ref{raytracing}) and bounding volume hierarchies
+(\ref{bvhs}). Finally, we discuss Morton coding and the Z-order curve
+(\ref{morton}) which FlexRender uses to distribute scene data amongst the
+machines.
 
 \section{Light and Radiometry}
 \label{radiometry}
 
-\textbf{TODO: light is linear}
+\emph{Radiometry}, the study of propagation of electromagnetic radiation, forms
+the basis for many rendering algorithms. Our coverage will be quick and
+incomplete, but we'll examine some critical theory that enables the design of
+FlexRender. For a more complete treatment of the topic in the context of
+rendering algorithms, we refer the reader to
+\emph{Physically Based Rendering} \cite{pbrt}.
+
+At its core, radiometry is based on modeling light as radiant energy and
+operates at the level of geometric optics. In other words, we acknowledge that
+light has wave-like properties and visible light occurs within a spectrum of
+wavelengths (roughly 400 to 750 nm), but we do not mathematically model it as
+a wave. Rather, we model it as a particle of radiant energy. In ray tracers
+(discussed in depth in \ref{raytracing}) we model the path traveled by a single
+particle of light with a ray.
+
+The particularly interesting parts of this model with respect to FlexRender are
+the following assumptions:
+
+\begin{description}
+    \item[Light behaves linearly.] The combined effect of two rays of light
+        in a scene is the same as the sum of their independent effects on the
+        scene.
+    \item[Energy is conserved.] When a ray reflects off of a surface, it can
+        never do so with more energy than it started with.
+\end{description}
+
+In particular, these assumptions allow us to make the following key
+observations, which FlexRender explicitly exploits:
+
+\begin{description}
+    \item[The location of computation doesn't matter.] If the scene is
+        distributed across many machines, it makes no difference which machine
+        computes the effect of a ray. The sum of all the machines' computations
+        will be the same as if the all the work was performed on a single
+        machine.
+    \item[Transmittance models energy conservation.] If we store the amount of
+        energy traveling along a ray (the \emph{transmittance}) with the ray
+        itself, we need not know anything about the preceeding rays or state
+        that brought this ray into existence. We can compute its contribution
+        to the scene independently and ensure that linearity and energy
+        conservation are both respected.
+\end{description}
 
 \section{Ray Tracing}
 \label{raytracing}
@@ -296,7 +346,7 @@ to message queueing around 1\% of each worker's system memory.
 \textbf{TODO: basic structure and traversal, algorithmic performance, etc.}
 
 \section{Morton Coding and the Z-Order Curve}
-\label{mortoncoding}
+\label{morton}
 
 \textbf{TODO: spatially coherent mapping of 3D space to 1D space}
 
