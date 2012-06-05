@@ -918,12 +918,67 @@ geometry it controlled.
 \section{System Optimizations}
 \label{optimizations}
 
-\textbf{TODO: replace morton coding with analysis and baking step, distribute all assets except geometry (eliminate final shading hop), prepass step to determine which workers should cast which primary rays}
+We present three potential optimizations. Two would deter or eliminate the
+extra network hops in BVH traversal, and the third would provide better
+geometry distribution and more parallelism.
+
+The first extra network hop occurs when rays are generated on machines that
+control geometry they do not intersect with. This requires at least one
+network hop before the ray could potentially intersect and be shaded. By performing
+a prepass step before rendering began, we could gather information about the
+layout of the scene in image space. By carefully choosing the slices of the
+image that workers were responsible for casting primary rays in, we could
+dramatically increase the chances that the ray would intersect the geometry
+on the worker and finish shading without ever touching the network.
+
+The second extra network hop occurs at the end of traversal, when the ray finishes
+traversing the top-level BVH but ends up on a worker that is not the point of
+intersection. Because the worker has no shading assets for that geometry, it
+must pass the ray back to the ``winning" worker for shading. By distributing
+all of the shading assets (shaders, textures, and materials) to all workers,
+any worker would be capable of shading a ray at the conclusion of its BVH traversal.
+This is possible because the rays carry along local geometry (mainly the surface
+normal) from the point of closest intersection.
+
+Lastly, we believe, in retrospect, that the Morton coding and Z-order curve was
+a poor choice for the distribution of geometry. It was initially chosen because
+we did not want to require a preprocessing (or \emph{baking}) step for
+determining the optimal distribution of geometry. Since the scene was presumably
+too large to fit in core on any one machine, preprocessing the scene as a whole
+was deemed to be against the spirit of the problem.
+
+The Z-order curve works well for spatially uniform scenes, but unfortunately a
+lot of scenes that are interesting to render are usually uniformly distributed
+in image space, not 3D space. The leads to a lot of degenerate scenes that
+perform suboptimally when rendered with FlexRender.
+
+There are lots of opportunities for distributing geometry in a more intelligent
+way if a preprocessing step was allowed. In addition, distribution could be
+designed for not only memory availability, but also for estimated rendering
+workload. This would lead to better parallelism during rendering, a more
+even computational load across the cluster, and better render times.
 
 \section{Memory Optimizations}
 \label{memory}
 
-\textbf{TODO: ray pools, cache line size, and queue alignment}
+Based on the profiling results of our current implementation, the main
+bottleneck is standard library calls and memory allocation. The transient
+nature of many fixed-size fat rays is a perfect opportunity to use an object
+pool to reduce allocation overhead and heap fragmentation.
+
+In addition, the linear BVH nodes structures were intentionally padded to
+64-bytes to match the cache line size on current CPUs. However without a custom
+STL allocator for the vector that stores this array of nodes, cache alignment
+is not guaranteed.
+
+Lastly, there are a few places where the size of fat rays could be reduced.
+For example, rather than storing the target position of an expected
+intersection, the expected t value along the ray could be stored instead. This
+would save 8 bytes. Another 4 bytes could be saved by removing the ``workers
+touched" benchmarking field. By careful overlapping of mutually exclusive data
+using unions, the size could probably be reduced further. Ideally a fat ray
+would fit on a single cache line and the same aligned allocation strategy could
+be applied to fat rays as well.
 
 \section{GPGPU and Heterogenous Architectures}
 \label{hetergenous}
