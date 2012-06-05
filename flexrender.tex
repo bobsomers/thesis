@@ -741,12 +741,42 @@ occur if too many primary rays enter the system at a time. This helps reduce
 memory usage required for queueing messages because new work is not generated
 until the system is ready to handle it.
 
-\textbf{TODO: prefer rays more likely to terminate}
-
 \subsection{Primary Ray Casting}
 \label{primaryrays}
 
-\textbf{TODO: runaway detection and prevention}
+The workers in the cluster are each responsible for casting a portion of the
+primary rays in the scene. The reasoning behind this is to give the cluster
+the ability to regulate itself.
+
+Consider the case where a worker has not received any work recently from other
+workers in the cluster. For whatever reason (intersection tests, shading, etc.)
+the other workers are too busy dealing with their own queues to send any work
+in the direction of our lonely, rayless worker. By giving the worker control
+over primary ray casting for a portion of the scene, we give workers the ability
+to generate work when they have nothing to do.
+
+However, to quote a comic book character, ``with great power comes great
+responsibility". Consider the case where a worker contains mostly background
+geometry. It will be receiving work from others infrequently because its size
+in screen space is small, but yet it is in charge of casting primary rays for
+a much larger slice of the image. In this case the worker may go on an
+unfettered spree of primary ray casting, causing lots of grief for his fellow
+workers since he is essentially generating work for others and little for
+himself.
+
+To prevent this ``runaway" case from overburdening the ray queues, we require
+that workers report statistics about their progress to the renderer every so
+often (10 times per second in the current implementation). If the renderer
+notices that a worker is getting significantly further ahead of the others in
+primary ray casting, we temporarily disable primary ray casting on that worker
+until the others catch up.
+
+Because the other workers will not generate primary rays as long as they still
+have other rays in their queues to process, the priority queueing, shared
+ray casting responsibilities, and temporary pausing of primary ray generation at
+runaway workers provides a simple means of self-regulating the cluster that
+works remarkably well and minimizing the memory overhead for message queueing.
+We will examine the overhead in detail in Chapter \ref{results}.
 
 \subsection{Distributed BVH Traversal}
 \label{traversal}
