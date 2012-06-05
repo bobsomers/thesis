@@ -195,9 +195,10 @@ closer to mimicking physical reality.
 At the heart of mimicking reality is describing the world we wish to show. In
 computer graphics, this has traditionally been done by defining surfaces. While
 exciting developments in volume rendering techniques happen on regular basis,
-it's unlikely we'll abandon using surfaces any time soon. Unfortunately for
-volumes, they are inherently an $n^3$ problem and $n^3$ is not a particularly
-friendly number in the field of Computer Science.
+it is unlikely we will abandon using surfaces any time soon. Unfortunately for
+volumes, they are inherently an $n^3$ problem (where $n$ is the size of the
+volume in one dimension) and $n^3$ is not a particularly friendly number in the
+field of Computer Science.
 
 For now and the foreseeable future, it seems, surfaces will be our bread and
 butter. Many methods have been developed for describing surfaces to computer
@@ -224,23 +225,29 @@ Graphics has long been said to be a problem that is \emph{embarrasingly parallel
 given that many graphics algorithms operate on pixels independently. Graphics
 processing units (GPUs) have exploited this fact for many years to achieve
 amazing throughput of graphics primitives in real-time. Ray tracing in
-particular (discussed more thoroughly in \ref{raytracing}) is commonly
+particular (discussed more thoroughly in Section \ref{raytracing}) is commonly
 paraded as the poster child for parallel processing.
 
-Unfortunately the story isn't all unicorns and rainbows. While processor
+Unfortunately the story is not all unicorns and rainbows. While processor
 architectures have become exceedingly parallel and posted impressive
-improvements, the memory hierarchy hasn't had time to catch up. In fact,
-if anything the problem has gotten more muddled and complicated as architects
-have scrambled to dump layer upon layer of cache in front of the memory
-controller to try to hide the fact that keeping these chips hot all the time is
-actually an extremely challenging problem.
+speedups, the memory hierarchy has not had time to catch up. For a processor
+to perform well, the CPI, \emph{cycles per instruction}, must remain low to
+ensure time is spent doing useful work and not waiting on data.
+
+In current memory hierarchies, data access time can take anywhere from around
+12 cycles (4 nanoseconds for an L1 cache hit) to over 300 cycles (100
+nanoseconds for main memory). Techniques such as out-of-order execution are
+helpful in filling this wasted time, but for memory intensive applications it
+can be difficult to fill all the gaps with useful work. Thus, keeping the chips
+"hot" by reducing time spent waiting on data is critical to achieve maximum
+performance, and is an extremely challenging problem.
 
 \textbf{TODO: graph of latencies in the memory hierarchy}
 
-Because of this, there is a lot more to parallel rendering than initially meets
-the eye. Graphics may indeed by highly parallel, but it is also hugely memory
-intensive, and that fact is actively working \emph{against} its parallel
-nature on current architectures.
+Because of this fact, there is a lot more to parallel rendering than initially
+meets the eye. Graphics may indeed by highly parallel, but its voracious appetite
+for memory access is actively working \emph{against} its parallel efficiency on
+current architectures.
 
 \section{Our Contribution}
 \label{contribution}
@@ -281,34 +288,33 @@ to message queueing around 1\% of each worker's system memory.
 \label{background}
 
 The FlexRender architecture builds on the four fundamenal building blocks
-described here. First, we discuss the linearity of light (\ref{radiometry}),
+described here. First, we discuss the linearity of light (Section \ref{radiometry}),
 which is critical to understanding why FlexRender produces a correct composite
-image from pieces rendered by different machines. Next, we give a general
-overview of ray tracing (\ref{raytracing}) and bounding volume hierarchies
-(\ref{bvhs}). Finally, we discuss Morton coding and the Z-order curve
-(\ref{morton}) which FlexRender uses to distribute scene data amongst the
-machines.
+image from pieces rendered by different workers. Next, we give a general
+overview of ray tracing (Section \ref{raytracing}) and bounding volume hierarchies
+(Section \ref{bvhs}). Finally, we discuss Morton coding and the Z-order curve
+(Section \ref{morton}) which FlexRender uses to distribute scene data amongst the
+workers.
 
 \section{Light and Radiometry}
 \label{radiometry}
 
 \emph{Radiometry}, the study of propagation of electromagnetic radiation, forms
-the basis for many rendering algorithms. Our coverage will be quick and
-incomplete, but we'll examine some critical theory that enables the design of
-FlexRender. For a more complete treatment of the topic in the context of
-rendering algorithms, we refer the reader to
-\emph{Physically Based Rendering} \cite{pbrt}.
+the basis for many rendering algorithms. Our coverage will be brief, but we will
+examine some critical theory that enables the design of FlexRender. For a more
+complete treatment of the topic in the context of rendering algorithms, we refer
+the reader to \emph{Physically Based Rendering} \cite{pbrt}.
 
 At its core, radiometry is based on modeling light as radiant energy and
 operates at the level of geometric optics. In other words, we acknowledge that
 light has wave-like properties and visible light occurs within a spectrum of
 wavelengths (roughly 400 to 750 nm), but we do not mathematically model it as
 a wave. Rather, we model it as a particle of radiant energy. In ray tracers
-(discussed in depth in \ref{raytracing}) we model the path traveled by a single
+(discussed in depth in Section \ref{raytracing}) we model the path traveled by a single
 particle of light with a ray.
 
-The particularly interesting parts of this model with respect to FlexRender are
-the following assumptions:
+The interesting parts of the radiometry model with respect to FlexRender are the
+following observations:
 
 \begin{description}
     \item[Light behaves linearly.] The combined effect of two rays of light
@@ -322,11 +328,10 @@ In particular, these assumptions allow us to make the following key
 observations, which FlexRender explicitly exploits:
 
 \begin{description}
-    \item[The location of computation doesn't matter.] If the scene is
-        distributed across many machines, it makes no difference which machine
-        computes the effect of a ray. The sum of all the machines' computations
-        will be the same as if the all the work was performed on a single
-        machine.
+    \item[The location of computation does not matter.] If the scene is
+        distributed across many workers, it makes no difference which worker
+        computes the effect of a ray. The sum of all the workers' computations
+        will be the same as if all the work was performed on a single worker.
     \item[Transmittance models energy conservation.] If we store the amount of
         energy traveling along a ray (the \emph{transmittance}) with the ray
         itself, we need not know anything about the preceeding rays or state
@@ -348,41 +353,47 @@ search to 3D space. In ray tracing, the vast majority of time is spent
 computing intersection tests to determine whether a ray intersects a given
 primitive. BVHs allow us to search 3D space for a potential intersection in a
 binary tree fashion, pruning off large numbers of primitives with a single
-test. Since it is effectively binary search, it's unsurprising that it reduces
-intersection searching from linear time $O(n)$ to logarithmic time $O(log\;n)$.
+test. Since it is effectively binary search, it is unsurprising that it reduces
+intersection searching from linear time $O(n)$ to logarithmic time $O(log\;n)$
+(assuming the BVH is well formed).
 
 \textbf{TODO: picture of bvh}
 
-BVHs are trees where each node is defined by a bounding box that describes
-a region of 3D space. All of the primitives in the scene that are within that
-region of space are child nodes in the tree. Each node has two direct children,
-which also define bounding boxes within that subregion of space. Nodes which
-have other bounding box nodes as their children are \emph{interior} nodes.
-\emph{Leaf} nodes in the tree define a bounding box around a single primitive.
+BVHs are trees where each node is defined by a bounding volume, such as a box
+or a sphere, that describes the extents of a region of 3D space. All of the
+primitives in the scene that are within that region of space are child nodes
+in the tree. Each node has two direct children, which also define bounding
+volumes within that subregion of space. Nodes which have other bounding volume
+nodes as their children are \emph{interior} nodes. \emph{Leaf} nodes in the tree
+define a bounding volume around a single primitive.
 
-For storage efficiency and better cache performance, after the tree structure
-is built using a typical linked-memory data structure, it's flattened into a
-linear array of nodes by walking the tree in a depth-first traversal. This means
-that the left-hand child of the node at index $n$ is located at index $n + 1$
-in the array of nodes. Each node stores an offset index to its right-hand child.
-Because the indices are relative to the array and not the array's location in
-memory, they are safe to pass back and forth between machines and require no
-address translation.
+After the tree structure is built using a typical linked-memory data structure,
+it is flattened into a linear array of nodes for storage efficiency and better
+cache performance. Flattening is done by walking the tree in a depth-first
+traversal. This means that the left-hand child of the node at index $n$ is
+located at index $n + 1$ in the array of nodes. Each node stores an offset
+index to its right-hand child. Because the indices are relative to the array
+and not the array's location in memory, they are safe to pass back and forth
+between workers and require no address translation.
 
 To traverse the tree looking for intersections, we begin by testing the root
-node's bounding box for an intersection. If the ray intersects the bounding
-box, we recursively test each of the node's children. Once we hit a leaf node,
+node's bounding volume for an intersection. If the ray intersects the volume,
+we recursively test each of the node's children. Once we hit a leaf node,
 we perform an actual ray-primitive intersection test to determine if the ray
 hits the primitive.
 
-Because this algorithm is naturally recursive, refactoring it as an iterative
-algorithm still requires a traversal stack of child nodes that we need visit on
-our way back up. Since this stack is unique for
-each ray, the entire stack would need to be carried along with each ray in the
-FlexRender design (described in detail in \ref{process}). In addition, the
-stack could potentially be large if the scene is large and the tree is deep, so
-it would be ideal if we had a method for traversing the tree efficiently without
-the need to maintain a traversal stack.
+The traversal algorithm is naturally recursive, but recursive implementations
+keep their state on the call stack. In FlexRender, we may need to suspend the
+traversal on one worker and resume it on another, so we need all of the
+traversal state explicitly exposed. Refactoring it as an iterative traversal
+explicitly exposes the state for capturing.
+
+The iterative algorithm still requires a traversal stack of child nodes that
+need to be visited on the way back up the tree. Since this stack is unique for
+each ray, the entire stack would need to be carried along with each ray. In
+addition, the stack could potentially be large if the scene is huge (and thus,
+the tree is deep), so it would be ideal if we had a method for traversing the
+tree iteratively without the need to maintain a traversal stack.
 
 A method for doing so is described by Hapala et al. in
 \emph{Efficient Stack-less BVH Traversal for Ray Tracing} \cite{hapala:2011}.
@@ -394,10 +405,10 @@ traversal algorithm produces identical tree walks and never retests nodes that
 have already been tested.
 
 FlexRender leverages this traversal algorithm due it its low state storage
-requirements. Each ray only needs to know the index of the current node it's
-traversing and the state of the traversal automaton. The extensions made
-to the algorithm to support suspending traversal and resuming it on another
-machine are described in \ref{traversal}.
+requirements. Each ray only needs to know the index of the current node it is
+traversing (in the array of flattened nodes) and the state of the traversal
+automaton. The extensions made to the algorithm to support suspending traversal
+and resuming it on another worker are described in Section \ref{traversal}.
 
 \section{Morton Coding and the Z-Order Curve}
 \label{morton}
@@ -409,15 +420,15 @@ Morton coding produces a space-filling Z-order curve.
 \textbf{TODO: pictures of Z-order curves}
 
 More concretely, FlexRender needs a way to distribute a large scene to many
-machines in a spatially coherent way. If the geometry on each machine consists
+workers in a spatially coherent way. If the geometry on each worker consists
 of a localized patch of the overall geometry, it allows us minimize communication
-between the machines, and thus, only pay the network cost when we absolutely need
-to (described in depth in \ref{traversal}).
+between the workers, and thus, only pay the network cost when we absolutely need
+to (described in depth in Section \ref{traversal}).
 
 Because the Morton coding produces a spatially coherent traversal of 3D space,
-dividing up the 1D Morton code address space among all the machines participating
+dividing up the 1D Morton code address space among all the workers participating
 in the render gives a reasonable assurance of spatial locality for the geometry
-sent to each machine.
+sent to each worker.
 
 The Morton coding is relatively simple to implement. For example, say that
 we wish to map a point $P$ in a region of 3D space (defined by its bounding extents
@@ -425,7 +436,7 @@ $min$ and $max$) to a Morton coded 64-bit integer. Discretizing each axis evenly
 allows for 21 bits per axis, yielding a 63-bit address space (and one unused bit
 in the integer).
 
-Computing the Morton code is simply a matter calculating the 21-bit discretized
+Computing the Morton code is simply a matter of calculating the 21-bit discretized
 component of $P$ along each axis, then shifting the components from each axis
 into the 64-bit integer one bit at a time in a round robin fashion, from the
 most-significant to least-significant bit.
@@ -475,128 +486,25 @@ most-significant to least-significant bit.
 \chapter{FlexRender Architecture}
 \label{architecture}
 
-In this section, we describe the design of FlexRender as well as its operation
-while rendering an image. We briefly cover the design of the shared graphics
-machinery for both the baseline implementation and FlexRender in \ref{types}.
-We cover the network architecture and roles of machines in FlexRender
-specifically in \ref{workers}, and the process of preparing the cluster for
-rendering in \ref{sync} and \ref{parallelbvh}.
+In this chapter, we describe the network architecture and roles of the involved
+machines in Section \ref{workers}. We discuss the structure of ray messages
+passed between workers in Section \ref{fatrays} and briefly cover the design of
+the graphics machinery shared between FlexRender and the baseline implementation
+in Section \ref{types}. We detail the process of preparing the cluster for
+rendering in Section \ref{sync} and Section \ref{parallelbvh}.
 
-At its core, machines in the cluster are just glorified ray processors. We
-discuss how the machines manage rays in \ref{queues}, how they generate work
-and keep memory usage stable in \ref{primaryrays}, how we decide when and where
-to send rays over the network in \ref{traversal}, and how shading is computed
-when lights and occluders may exist anywhere in the cluster in \ref{shading}.
+At its core, workers in the cluster are just ray processors. We discuss how they
+manage ray messages in Section \ref{queues}, how they generate new work with
+stable memory usage in Section \ref{primaryrays}, how we decide when and where
+to send rays over the network in Section \ref{traversal}, and how shading is computed
+when lights and occluders may exist anywhere in the cluster in Section \ref{shading}.
 
-Finally, we wrap up our tour with discussion of how we monitor the progress
-of the render in \ref{stats} and how we composite the final image from its
-components in \ref{synthesis}.
+Finally, we wrap up our discussion with how we monitor the progress of the
+render in Section \ref{stats} and how we composite the final image from its
+components in Section \ref{synthesis}.
 
 \section{Organization and Design}
 \label{organization}
-
-\subsection{General Types and Subsystems}
-\label{types}
-
-The core graphics machinery in FlexRender is fairly standard. A scene consists
-of a collection of \emph{meshes}, which are stored as indexed face sets of vertices
-(positions with normals and texture coordinates) and faces.
-
-Each mesh is a assigned a \emph{material}, which is responsible for drawing the
-mesh. A material consists of a \emph{shader} and potentially a set of bindings
-from \emph{textures} to names in the shader.
-
-A \emph{shader} is a piece of code that is run to compute the lighting on a
-surface at a particular point. The implementation of shaders in FlexRender is
-through extensions to the Lua \cite{lua} programming language using the LuaJIT
-\cite{luajit} implementation for speed. A shader may do any (or none) of the
-following:
-
-\begin{enumerate}
-    \item Sample textures based on the name bindings assigned in the material
-        definition.
-    \item Compute a light value based on some implementation of a mathematical
-        shading model and the local informtion at the point being shaded.
-    \item Accumulate computed light values into the primary RGB buffers, or
-        any auxilliary named buffer.
-    \item Cast additional rays into the scene.
-\end{enumerate}
-
-\textbf{TODO: example phong shader snippet}
-
-A \emph{texture} is a either a 2D array of pixels (for image textures) or
-a snippet of Lua code (for procedural textures) that defines the value of
-something across a surface. They are most commonly used for providing colored
-detail across the face of a triangle.
-
-All of the code used in graphics computation is shared between both our baseline
-implementation and FlexRender. This ensures fair comparisons when we analyze our
-results in \ref{results}.
-
-The currency of computation and core message type in FlexRender is the
-\emph{fat ray}. They are so named because they carry additional state
-information along with their geometric definition of an origin and a direction.
-Their counterparts, \emph{slim rays}, consist of only the geometric components.
-
-Specifically, a fat ray contains the following information:
-
-\begin{description}
-    \item[Type] \hfill \\
-        The kind of ray this is. Described in \ref{process}.
-    \item[Source Pixel] \hfill \\
-        The pixel this ray contributes to.
-    \item[Bounce Count] \hfill \\
-        The number of times this ray has reflected off a surface.
-    \item[Origin and Direction] \hfill \\
-        Geometric properties of the ray.
-    \item[Transmittance] \hfill \\
-        The amount this ray contribute to the source pixel.
-    \item[Emission] \hfill \\
-        The emitted light (from a light source) carried along the ray.
-        Described in \ref{shading}.
-    \item[Target] \hfill \\
-        The expected intersection point of the ray. Described in \ref{shading}.
-    \item[Traversal State] \hfill \\
-        The state of the top-level BVH traversal. Described in \ref{traversal}.
-    \item[Hit Record] \hfill \\
-        Record of the worker, mesh, and $t$ value of the nearest intersection
-        so far.
-    \item[Current Worker] \hfill \\
-        The worker this ray should be sent to (over the network).
-    \item[Workers Touched] \hfill \\
-        The number of workers this ray has touched so far. Not necessary for
-        rendering. Only used for analysis.
-    \item[Next Pointer] \hfill \\
-        Invalid after being passed over the network. Used for locally queueing
-        rays as described in \ref{queues}.
-\end{description}
-
-In total, the size of a fat ray is 128 bytes.
-
-When new rays are cast into the scene from a shader, the results of that trace
-are not immediately available. Instead the trace queues that ray for processing
-and the traversal and shading systems ensure that the result of the trace will be
-included in the final image.
-
-In order for linearity and energy conservation to be respected, certain values
-are inherited from the parent ray. In particular the source pixel is inherited
-(so the ray contributes to the correct pixel in the final image) and the
-desired transmittance along the new ray is multiplied with the transmittance of
-the parent ray (to ensure energy conservation is preserved).
-
-Casting rays from the shader can be used to implement several common visual
-effects:
-
-\begin{description}
-    \item[Alpha Masking] Cast a new ray in the same direction with the full
-        transmittance.
-    \item[Reflection] Cast a new ray in the reflected direction with some
-        fraction of the transmittance.
-    \item[Refraction] Cast a new ray in the refracted direction with some
-        fraction of the transmittance.
-    \item[Monte Carlo Global Illumination] Cast sample rays in the surface
-        hemisphere with fractional transmittances based on the number of samples.
-\end{description}
 
 \subsection{Workers and the Renderer}
 \label{workers}
@@ -610,7 +518,7 @@ There are two potential roles a machine can play during the rendering process.
         arbitrary number of them participating in a render.
     \item[Renderer] This machine reads in the scene data and distributes it to
         the workers. Once rendering begins it monitors the status of the each
-        worker and halts any potential runaway situations (see \ref{primaryrays}).
+        worker and halts any potential runaway situations (see Section \ref{primaryrays}).
         When the renderer decides the process is complete, it requests
         the image components from each worker and merges them into the final
         image. There is only a single renderer in any given cluster and it is
@@ -622,9 +530,69 @@ in a star configuration. Each worker exposes a server which receives and
 processes messages, and holds client connections open to every other worker for
 passing messages around the cluster. The renderer also holds a client connection
 to every worker for sending configuration data, preparing up the cluster for rendering
-(described in \ref{sync}), and monitoring render progress (described in \ref{stats}).
+(described in Section \ref{sync}), and monitoring render progress (described in
+Section \ref{stats}).
 
 \textbf{TODO: diagram of network architecture}
+
+\subsection{Fat Rays}
+\label{fatrays}
+
+The currency of computation and core message type in FlexRender is the
+\emph{fat ray}. They are so named because they carry additional state
+information along with their geometric definition of an origin and a direction.
+Their counterparts, \emph{slim rays}, consist of only the geometric components.
+
+Specifically, a fat ray contains the following data:
+
+\begin{itemize}
+    \item The \textbf{type of ray} this is. Described in Section \ref{process}.
+    \item The \textbf{source pixel} that this ray contributes to.
+    \item The \textbf{bounce count}, or number of times this ray has reflected
+        off a surface (to prevent infinite loops).
+    \item The \textbf{origin and direction} of the ray.
+    \item The ray's \textbf{transmittance}, or the amount that it contributes
+        to the source pixel.
+    \item The \textbf{emission} from a light source carried along the ray (if
+        any). Described in Section \ref{shading}.
+    \item The \textbf{target intersection point} of the ray, if any. Described
+        in Section \ref{shading}.
+    \item The \textbf{traversal state} of the top-level BVH. Described in
+        Section \ref{traversal}.
+    \item The \textbf{hit record}, which contains the worker, mesh, and $t$
+        value of the nearest intersection.
+    \item The \textbf{current worker} this ray should be sent to over the
+        network.
+    \item The \textbf{number of workers touched} by the ray so far. Not
+        necessary for rendering. Only used for analysis.
+    \item A \textbf{next pointer} for locally queueing rays as described in
+        Section \ref{queues}. Obviously not valid over the network.
+\end{itemize}
+
+In total, the size of a fat ray is 128 bytes.
+
+\subsection{General Types}
+\label{types}
+
+The core graphics machinery in FlexRender is fairly straightforward. A scene consists
+of a collection of \emph{meshes}, which are stored as indexed face sets of vertices
+(positions with normals and texture coordinates) and faces.
+
+Each mesh is a assigned a \emph{material}, which is responsible for drawing the
+mesh. A material consists of a \emph{shader} and potentially a set of bindings
+from \emph{textures} to names in the shader.
+
+A \emph{shader} is a piece of code that is run to compute the lighting on a
+surface at a particular point.
+
+A \emph{texture} is a either a 2D array of pixels (for image textures) or
+a snippet of code (for procedural textures) that defines the value of
+something across a surface. They are most commonly used for providing colored
+detail across the face of a triangle.
+
+All of the code used in graphics computation is shared between both our baseline
+implementation and FlexRender. This ensures fair comparisons when we analyze our
+results in Section \ref{results}.
 
 \section{Render Preparation}
 \label{prep}
@@ -665,6 +633,51 @@ to every worker for sending configuration data, preparing up the cluster for ren
 \label{shading}
 
 \textbf{TODO: casting light rays backwards (light to object) and pushing them back into the system, checking for hit within epsilon of target}
+
+\textbf{TODO: this stuff should go here instead:}
+
+A \emph{shader} is a piece of code that is run to compute the lighting on a
+surface at a particular point. The implementation of shaders in FlexRender is
+through extensions to the Lua \cite{lua} programming language using the LuaJIT
+\cite{luajit} implementation for speed. A shader may do any (or none) of the
+following:
+
+\begin{enumerate}
+    \item Sample textures based on the name bindings assigned in the material
+        definition.
+    \item Compute a light value based on some implementation of a mathematical
+        shading model and the local informtion at the point being shaded.
+    \item Accumulate computed light values into the primary RGB buffers, or
+        any auxilliary named buffer.
+    \item Cast additional rays into the scene.
+\end{enumerate}
+
+\textbf{TODO: example phong shader snippet}
+
+When new rays are cast into the scene from a shader, the results of that trace
+are not immediately available. Instead the trace queues that ray for processing
+and the traversal and shading systems ensure that the result of the trace will be
+included in the final image.
+
+In order for linearity and energy conservation to be respected, certain values
+are inherited from the parent ray. In particular the source pixel is inherited
+(so the ray contributes to the correct pixel in the final image) and the
+desired transmittance along the new ray is multiplied with the transmittance of
+the parent ray (to ensure energy conservation is preserved).
+
+Casting rays from the shader can be used to implement several common visual
+effects:
+
+\begin{description}
+    \item[Alpha Masking] Cast a new ray in the same direction with the full
+        transmittance.
+    \item[Reflection] Cast a new ray in the reflected direction with some
+        fraction of the transmittance.
+    \item[Refraction] Cast a new ray in the refracted direction with some
+        fraction of the transmittance.
+    \item[Monte Carlo Global Illumination] Cast sample rays in the surface
+        hemisphere with fractional transmittances based on the number of samples.
+\end{description}
 
 \section{Render Completion}
 \label{completion}
