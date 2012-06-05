@@ -836,17 +836,74 @@ effects:
 \section{Render Completion}
 \label{completion}
 
-\textbf{TODO}
+In a traditional recursive ray tracer, determining when the render is complete
+is a simple task. Once the last primary ray pops its final stack frame frame
+the render is over. In FlexRender, however, no one worker (or the renderer, for
+that matter) knows where the ``last ray" is. To determine when a render is
+complete, the workers report rendering statistics to the renderer at regular
+intervals, which are used for deciding when the render is finished. This decision
+metric is discussed in Section \ref{stats}.
+
+Once the render is complete, the renderer requests the individual image buffers
+from each worker and reassembles them into the final output image. This process
+is discussed in Section \ref{synthesis}.
 
 \subsection{Statistics and Monitoring}
 \label{stats}
 
-\textbf{TODO: primary casting progress, rays produced and killed, queue sizes}
+For monitoring the progress of the render, the workers report general statistics
+about their activities to the renderer at regular intervals (in our current
+implementation, 10 times per second). In particular, the following four
+statistics are useful for determining if the render has finished:
+
+\begin{description}
+   \item[Primary Ray Casting Progress] The amount of the worker's primary rays
+      that have been cast into the scene.
+   \item[Rays Produced] The number of rays created at the worker during this
+      measurement interval. This includes new intersection rays cast from the
+      camera or a shader, illumination rays created by terminating intersection
+      rays, or light rays created by processing illumination rays.
+   \item[Rays Killed] The number of rays finalized at the worker during this
+      measurement interval. This includes intersection rays that terminated or
+      did not hit anything, illumination rays that were destroyed after spawning
+      light rays, or light rays whose final shading value was computed.
+   \item[Rays Queued] The number of rays currently in this worker's ray queue.
+\end{description}
+
+In particular, if any worker has not finished casting its primary rays, we
+know for certain the render is not complete. Secondly, if we observe that no
+rays are produced, killed, or queued at any workers for some number of
+consecutive measurement intervals, it is reasonable to assume that the render
+has concluded.
+
+Our current implementation (which reports statistics 10 times per second)
+waits until it sees 10 consecutive intervals of ``uninteresting" activity on
+the workers before declaring the render complete. We find this achieves a nice
+balance between wanting to end the render as soon as it is legitimately
+finished and risking concluding it too early.
 
 \subsection{Image Synthesis}
 \label{synthesis}
 
-\textbf{TODO: request worker buffers and merge them into a single buffer linearly}
+Once the render has been deemed ``complete", the renderer requests the image
+buffers from each worker. Because all rendering was computed by respecting
+linearity, computing the a pixel in the final output image is just a matter
+of summing corresponding pixels in the worker buffers.
+
+This can yield some interesting intermediate images. Each worker's buffer
+represents the light in the final image that interacts in some way with the
+geometry present on that worker.
+
+For direct light, this shows up as shaded samples where geometry was present
+and black areas where it was not. For other effects such as reflections and
+global illumination, it appears that the worker had access to the whole scene's
+geometry all along, but this is just an optical illusion. Since the rays
+carry with them the source pixel they contribute to (and this value is inherited
+as new rays are spawned from the primary ray), a worker can end up contributing
+to any pixel in the image as long as the light interacted in some way with the
+geometry it controlled.
+
+\textbf{TODO: show examples of intermediate images}
 
 \chapter{Results}
 \label{results}
