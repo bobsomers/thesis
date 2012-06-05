@@ -643,7 +643,28 @@ carefully throwing out any geometry that is not within their Morton bounds.
 \subsection{Parallel Construction of Spatial Acceleration Structures}
 \label{parallelbvh}
 
-\textbf{TODO: build BVH per mesh, then BVH of mesh bounds (still local), then send worker bounds to renderer and build BVH of worker bounds, distribute that to everyone}
+To accelerate intersection testing against each mesh, each worker first
+constructs a BVH for every mesh it has. These BVHs are tied directly to the mesh
+they accelerate. While building each BVH, the worker stores a list of the bounding
+extents of each mesh.
+
+Next, each worker builds a root BVH for the entire worker, which uses the mesh
+extents for its leaf nodes. When testing for intersections locally, a worker
+first tests against this root BVH to determine candidate meshes, then traverses
+each mesh's individual BVH to compute absolute intersections. After construction
+of this root BVH, the root node's bounding extents will describe the spatial
+extent of all geometry located on that worker.
+
+Once construction of all the local BVHs is complete, each worker sends its
+total bounding extents to the renderer. Once the renderer has the bounding
+extents of each worker, it constructs a final ``top-level" BVH of the workers.
+The renderer then distributes this top-level BVH to all the workers, so that
+everyone participating has an identical copy of it. This is a very quick and
+lightweight process, since it is only dependent on the number of workers
+participating in the render.
+
+This top-level BVH will be used to direct where we pass rays over the network
+in Section \ref{\traversal}.
 
 \section{Ray Processing}
 \label{process}
