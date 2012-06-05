@@ -597,12 +597,48 @@ results in Section \ref{results}.
 \section{Render Preparation}
 \label{prep}
 
-\textbf{TODO}
+Render preparation consists of ensuring that all the workers agree on the
+basic rendering parameters, distributing the scene assets to each worker, and
+building the distributed bounding volume hierarchy. We discuss configuration
+and distribution in Section \ref{sync} and parallel construction of the BVH in
+Section \ref{parallelbvh}.
 
 \subsection{Configuration and Asset Distribution}
 \label{sync}
 
-\textbf{TODO: basic config data, establish worker connections, chunk up morton address space, read meshes, compute morton codes of their centroids, distribute to workers (also mention reading data off of shared network storage)}
+The configuration consists of basic information about how the scene is to be
+rendered, such as the image dimensions, the workers participating in the render,
+etc. In addition, the configuration specifies the minimum and maximum bounding
+extents of the scene. This is used in the asset distribution step for driving
+the Morton coding discretation along each axis.
+
+Once the renderer has read in the configuration, it opens client connections
+to each worker and sends the configuration data to them. Similarly, each worker
+opens a client connection to every other worker. These renderer/worker and
+worker/worker connections remain open for the duration of the render.
+
+The renderer then divides up the 63-bit Morton code address space evenly by the
+number of workers participating and assigns a region of it to each one.
+
+Finally, the renderer begins reading in and parsing the scene data. As each mesh
+is loaded, the renderer takes the following actions:
+
+\begin{enumerate}
+   \item Computes the centroid of the mesh by averaging its vertices.
+   \item Computes the Morton code of the mesh centroid. This determines
+      which worker the mesh will be sent to.
+   \item Ensures that any asset dependencies (such as materials,
+      shaders, and textures) for this mesh have been sent the designated worker.
+   \item Sends the mesh data to the designated worker.
+   \item Deletes the mesh data from its own memory.
+\end{enumerate}
+
+Although the current implementation reads scene data in at the renderer
+and distributes it over the network, there is no inherent reason why it needs to
+do so. For example, if all the workers have access to the scene data over network
+storage, the renderer could simply tell each worker the range of the Morton code
+address space it is responsible for and let them load the scene data themselves,
+carefully throwing out any geometry that is not within their Morton bounds.
 
 \subsection{Parallel Construction of Spatial Acceleration Structures}
 \label{parallelbvh}
