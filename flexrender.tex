@@ -343,7 +343,7 @@ observations, which FlexRender explicitly exploits:
 \section{Ray Tracing}
 \label{raytracing}
 
-\textbf{TODO: general overview}
+\textbf{TODO: general overview (mention Monte Carlo)}
 
 \section{Bounding Volume Hierarchies}
 \label{bvhs}
@@ -669,7 +669,44 @@ in Section \ref{\traversal}.
 \section{Ray Processing}
 \label{process}
 
-\textbf{TODO: mention the 3 types of rays}
+At their core, workers are essentially just multithreaded ray processors. Once
+rendering begins, they continually pull rays out of the ray queue (discussed in
+Section \ref{queues}), schedule them onto the thread pool, and process them
+when the thread is run. This processing step consists of testing for intersection,
+potentially forwarding the ray to another worker (Section \ref{traversal}),
+or computing shading values if the ray terminates (Section \ref{shading}).
+
+As mentioned in Section \ref{fatrays}, fat rays have an associated type. There
+are three different types of rays in FlexRender:
+
+\begin{itemize}
+   \item \textbf{Intersection rays} are rays whose sole purpose is to identify
+      a point in space at which we would like to compute shading.
+   \item \textbf{Illumination rays} are essentially copies of intersection
+      rays that have terminated. They are sent to workers who have emissive
+      geometry (described in Section \ref{shading}).
+   \item \textbf{Light rays} are Monte Carlo samples that contribute direct
+      illumination to a point that a worker is shading (described in Section
+      \ref{shading}).
+\end{itemize}
+
+An important point to note about these rays is the sequence of their lifetimes.
+Their purposes will become more clear in the following sections, but the order
+is as follows:
+
+\begin{enumerate}
+   \item An intersection ray is cast into the scene.
+   \item When that intersection ray terminates at a point in space, it dies and
+      spawns illumination rays.
+   \item When those illumination rays reach their destination, they die and
+      spawn light rays.
+   \item When those light rays terminate at a point in space, a shading value
+      is computed.
+\end{enumerate}
+
+From this sequence of lifetimes, it should be apparent that a single intersection
+ray can spawn many additional rays. It should also be apparent that light rays
+are the most likely to die without generating more rays.
 
 \subsection {Ray Queues}
 \label{queues}
