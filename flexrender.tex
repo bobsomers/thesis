@@ -928,7 +928,22 @@ geometry it controlled.
 \section{GPGPU and Heterogenous Architectures}
 \label{hetergenous}
 
-\textbf{TODO: network interface, GPU workers, 10 GigE user mode DMA}
+One of FlexRender's strengths is that it decouples the ray tracing computations
+at the level of the individual ray. Because workers in the cluster speak a
+defined network protocol to pass rays around, this opens the door for workers to
+join the cluster with new and interesting machine architectures.
+
+For example, consider general purpose GPU (GPGPU) computing. Vast speedups can
+be attained by moving number-crunching operations to the GPU, but the CPU and
+GPU usually exist in separate memory spaces. This means the memory transfer cost
+of pushing data over the bus to the GPU must be amortized by the amount of
+computation done on the GPU.
+
+Because workers are never waiting on other workers for the results of a
+computation, this opens up the possibility for batching data to a GPU worker.
+Consider a worker who simply queues messages until enough are present to move
+the data to the the GPU. FlexRender's architecture is amiable to amortizing
+the cost of bus transfers in GPGPU computing.
 
 \clearpage
 \bibliography{flexrender}
