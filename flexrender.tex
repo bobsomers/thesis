@@ -711,6 +711,36 @@ are the most likely to die without generating more rays.
 \subsection {Ray Queues}
 \label{queues}
 
+Each worker has ray queue, with the typical push and pop operations for adding
+and remove rays from the queue. This queue internally is implemented as three
+separate queues, where rays are separated by type. It also contains information
+about the scene camera, for generating new primary rays.
+
+When a new ray arrives at a worker over the network, it is immediately pushed
+into the queue. Internally, it is pushed into the queue matching its type
+(intersection, illumination, or light).
+
+When the worker pops a ray from the queue, we pull rays from the internal
+queues in the following order:
+
+\begin{enumerate}
+   \item The \textbf{light queue}, since these are least likely to generate
+      new rays.
+   \item If the light queue is empty, we pop from the \textbf{illumination queue},
+      since these will generate a limited number of new rays.
+   \item If the illumination queue is empty, we pop from the
+      \textbf{intersection queue}, since these can generate the most new rays.
+   \item If all of the internal queues are empty, we use the camera to cast
+      new primary rays into the scene (described in \ref{primaryrays}). This
+      effectively generates new work.
+\end{enumerate}
+
+Organizing the processing order of rays as a priority queue based on ray type
+is an essential step in minimizing the exponential explosion of work than can
+occur if too many primary rays enter the system at a time. This helps reduce
+memory usage required for queueing messages because new work is not generated
+until the system is ready to handle it.
+
 \textbf{TODO: prefer rays more likely to terminate}
 
 \subsection{Primary Ray Casting}
