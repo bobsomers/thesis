@@ -21,29 +21,22 @@
 \usepackage{textcomp}
 \usepackage{url}
 \usepackage{float}
+\usepackage[usenames,dvipsnames]{color}
 \usepackage{listings}
 \lstset{
-	language=[Visual]C++,
-	keywordstyle=\bfseries\ttfamily\color[rgb]{0,0,1},
-	identifierstyle=\ttfamily,
-	commentstyle=\color[rgb]{0.133,0.545,0.133},
-	stringstyle=\ttfamily\color[rgb]{0.627,0.126,0.941},
-	showstringspaces=false,
-	basicstyle=\small,
-	numberstyle=\footnotesize,
-	numbers=left,
-	stepnumber=1,
-	numbersep=10pt,
-	tabsize=2,
-	breaklines=true,
-	prebreak = \raisebox{0ex}[0ex][0ex]{\ensuremath{\hookleftarrow}},
-	breakatwhitespace=false,
-	aboveskip={1.5\baselineskip},
-  columns=fixed,
-  upquote=true,
-  extendedchars=true
-% frame=single,
-% backgroundcolor=\color{lbcolor},
+    language=C++,
+    basicstyle=\small\ttfamily\bfseries,
+    frame=tb,
+    numbers=left,
+    numberstyle=\tiny,
+    numbersep=-4pt,
+    columns=fullflexible,
+    showstringspaces=false,
+    captionpos=b,
+    keywordstyle=\color{Blue},
+    morekeywords={function,local,then,end},
+    commentstyle=\color{OliveGreen},
+    stringstyle=\color{BrickRed}
 }
 \usepackage{color}
 %\ifpdf
@@ -514,7 +507,31 @@ component of $P$ along each axis, then shifting the components from each axis
 into the 64-bit integer one bit at a time in a round robin fashion, from the
 most-significant to least-significant bit.
 
-\textbf{TODO: pseudocode listing of morton code computation}
+\begin{lstlisting}[caption=Example of computing the Morton code.,label=mortoncode]
+    // Discretize each component based 21 bits per axis.
+    int factor = 0x1 << 21;
+    int discrete_x = ((point.x - min.x) / (max.x - min.x)) * factor;
+    int discrete_y = ((point.y - min.y) / (max.y - min.y)) * factor;
+    int discrete_z = ((point.z - min.z) / (max.z - min.z)) * factor;
+
+    uint64_t morton = 0;
+    for (int bit = 20; bit >= 0; bit--) {
+        // Set the bitmask.
+        int mask = 0x1 << bit;
+
+        // Extract the next bit from each component.
+        int bit_x = (discrete_x & mask) >> bit;
+        int bit_y = (discrete_y & mask) >> bit;
+        int bit_z = (discrete_z & mask) >> bit;
+
+        // Make space on the right edge of the Morton code.
+        morton = morton << 3;
+
+        // Set the x/y/z components.
+        morton |= ((bit_x << 2) | (bit_y << 1) | (bit_z << 0));
+    }
+\end{lstlisting}
+
 
 \chapter{Related Work}
 \label{relatedwork}
@@ -1106,7 +1123,26 @@ for speed. A shader may do any (or none) of the following:
     \item Cast additional rays into the scene.
 \end{enumerate}
 
-\textbf{TODO: example phong shader snippet}
+\begin{lstlisting}[caption=Example of a simple Phong shader.,label=phongshader]
+    function direct(view, normal, texcoord, light, intensity)
+        local NdotL = dot(normal, light)
+        if NdotL < 0 then NdotL = 0 end
+    
+        local R = reflect(-view, normal)
+        local VdotR = dot(reflect, view)
+        if VdotR < 0 then VdotR = 0 end
+    
+        local diffuse = 0.6 * vec3(1, 0, 0) * intensity * NdotL
+        local specular = 0.2 * intensity * (VdotR ^ 8)
+    
+        accumulate3("R", "G", "B", diffuse + specular)
+    end
+    
+    function indirect(view, normal, texcoord)
+        local ambient = 0.2 * vec3(1, 0, 0)
+        accumulate3("R", "G", "B", ambient)
+    end
+\end{lstlisting}
 
 When new rays are cast into the scene from a shader, the results of that trace
 are not immediately available. Instead, the trace pushes the new rays into the
@@ -1206,12 +1242,18 @@ as new rays are spawned from the primary ray), a worker can end up contributing
 to any pixel in the image as long as the light interacted in some way with the
 geometry it controlled.
 
-\textbf{TODO: show examples of intermediate images}
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=140mm]{images/linearity.png}
+    \captionfonts
+    \caption{The left and right images show the geometry split between two workers. The composite image is in the center. Note how the Buddha reflects the left side geometry in the left image and the right side geometry in the right image. The actual Buddha mesh data was distributed to the worker on the left.}
+    \label{fig:linearity}
+\end{figure}
 
 \chapter{Results}
 \label{results}
 
-\textbf{TODO}
+\textbf{TODO: Find whoever booted the 255 lab machines into Windows and make them pay. Nobody does real Computer Science on Windows!}
 
 \chapter{Future Work}
 \label{futurework}
