@@ -786,21 +786,64 @@ We will examine the overhead in detail in Chapter \ref{results}.
 \subsection{Illumination and Shading}
 \label{shading}
 
-\textbf{TODO: casting light rays backwards (light to object) and pushing them back into the system, checking for hit within epsilon of target}
+There is no special ``light" type in FlexRender, rather only meshes that are
+emissive, which is a property set by the assigned material. Meshes that are
+emissive are known to inject light into the scene through a special function in
+their shader which is called to compute that emission. During scene loading,
+the renderer maintains a list of all workers that have received at least one
+emissive mesh. This list is synchronized with all workers right before
+rendering begins.
 
-\textbf{TODO: this stuff should go here instead:}
+Once a point has been indentified for shading with intersection testing, we
+need to determine the visibility of that point with respect to the light sources
+in the scene. In a traditional ray tracer, you simply cast rays from the point
+of intersection to samples on the surface of the light to determine visibility.
+However in FlexRender, from the perspective of the worker doing the shading,
+we have no idea where all the of the lights in the scene are, or more importantly,
+if there is any geometry occluding the light and casting the intersection in
+shadow.
 
-A \emph{shader} is a piece of code that is run to compute the lighting on a
-surface at a particular point. The implementation of shaders in FlexRender is
-through extensions to the Lua \cite{lua} programming language using the LuaJIT
-\cite{luajit} implementation for speed. A shader may do any (or none) of the
-following:
+To solve this problem, we simply trace the light rays in the opposite direction.
+Rather than originating from the intersection point and heading in the
+direction of the light, we originate the rays at the light and cast them in the
+direction of the intersection point. If the light ray arrives back at the
+original intersection point after being traced through the cluster, we know that
+its path from the light was unoccluded. This leverages the same efficient method
+for distributed ray tracing that we already developed for testing intersections.
+
+Specifically, casting light rays towards an intersection point consists of the
+following operations:
+
+\begin{enumerate}
+    \item At the worker where an intersection was found, copy the ray data into
+        an illumination ray with the target set to the point of intersection.
+    \item Send this illumination ray to all workers known to have emissive meshes.
+    \item When a worker receives an illumination ray, generate sample points
+        across the surface of all emissive meshes. Set these sample points as
+        the origins for new light rays.
+    \item Set the directions of all the light rays such that they are pointed
+        in the direction of the target (the original point of intersection).
+    \item Push each light ray into the ray queue and let the cluster process
+        them as usual.
+\end{enumerate}
+
+When a light ray arrives at a worker, we simply check that its point of
+intersection is within some epsilon of the target. If it is, we consider the
+light sample visible, look up the material, shader, and textures for the mesh,
+and run the shader. The shader is responsible for writing its computed values
+into the worker's image buffer.
+
+The implementation of shaders in FlexRender is through extensions to the Lua
+\cite{lua} programming language, using the LuaJIT \cite{luajit} implementation
+for speed. A shader may do any (or none) of the following:
 
 \begin{enumerate}
     \item Sample textures based on the name bindings assigned in the material
         definition.
     \item Compute a light value based on some implementation of a mathematical
-        shading model and the local informtion at the point being shaded.
+        shading model (such as the Phong model) and local information at the
+        point being shaded (such as the interpolated surface normal and texture
+        coordinates).
     \item Accumulate computed light values into the primary RGB buffers, or
         any auxilliary named buffer.
     \item Cast additional rays into the scene.
@@ -809,12 +852,12 @@ following:
 \textbf{TODO: example phong shader snippet}
 
 When new rays are cast into the scene from a shader, the results of that trace
-are not immediately available. Instead the trace queues that ray for processing
-and the traversal and shading systems ensure that the result of the trace will be
-included in the final image.
+are not immediately available. Instead, the trace pushes the new rays into the
+queue for processing and the traversal and shading systems ensure that the
+result of secondary and $n$-ary traced rays will be included in the final image.
 
 In order for linearity and energy conservation to be respected, certain values
-are inherited from the parent ray. In particular the source pixel is inherited
+are inherited from the parent ray. In particular, the source pixel is inherited
 (so the ray contributes to the correct pixel in the final image) and the
 desired transmittance along the new ray is multiplied with the transmittance of
 the parent ray (to ensure energy conservation is preserved).
@@ -822,16 +865,19 @@ the parent ray (to ensure energy conservation is preserved).
 Casting rays from the shader can be used to implement several common visual
 effects:
 
-\begin{description}
-    \item[Alpha Masking] Cast a new ray in the same direction with the full
-        transmittance.
-    \item[Reflection] Cast a new ray in the reflected direction with some
-        fraction of the transmittance.
-    \item[Refraction] Cast a new ray in the refracted direction with some
-        fraction of the transmittance.
-    \item[Monte Carlo Global Illumination] Cast sample rays in the surface
-        hemisphere with fractional transmittances based on the number of samples.
-\end{description}
+\begin{itemize}
+    \item \textbf{Alpha masking} can be achieved by casting a new ray in the
+        same direction with the full transmittance of the parent ray.
+    \item \textbf{Reflection} can be achieved by casting a new ray in the
+        reflected direction with some fraction of the transmittance based on
+        the reflectivity of the surface.
+    \item \textbf{Refraction} can be achieved by casting a new ray in the
+        refracted direction with some fraction of the transmittance based on
+        the index of refraction and opacity of the surface.
+    \item \textbf{Monte Carlo global illumination} can be achieved by casting
+        rays in random directions by sampling the hemisphere above the surface,
+        with fractional transmittances based on the number of samples.
+\end{itemize}
 
 \section{Render Completion}
 \label{completion}
