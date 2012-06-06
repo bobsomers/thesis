@@ -862,7 +862,96 @@ We will examine the overhead in detail in Chapter \ref{results}.
 \subsection{Distributed BVH Traversal}
 \label{traversal}
 
-\textbf{TODO: modifications to stackless method}
+To understand how distributed traversal of the top-level BVH works, consider
+the following example traversal of this top-level tree with 5 workers
+participating in the render.
+
+\textbf{TODO: figure}
+
+The worker who generates the ray begins traversing the tree by checking the ray
+against the bounds of the left-hand child. If the ray fails the test, we move
+to check its sibling, right-hand child.
+
+\textbf{TODO: figure}
+
+This test passes, so we continue down the tree to that node's left-hand child.
+Let us assume this test also passes.
+
+\textbf{TODO: figure}
+
+We test our first leaf node, and it passes. This indicates we must test the
+geometry on the worker itself. This is where our primary modification to the
+Hapala et al \cite{hapala:2011} algorithm occurs. Rather than continuing to
+traverse the tree, we immediately jump out of the function the return the
+traversal state. The traversal state consists of the index of the current
+node, and the automaton defining where we came from (7 and \emph{from the parent}
+respectively). We store this traversal state in the ray and pass it off to worker
+C.
+
+When worker C unpacks the ray and begins to process it, it notices that the
+state of the traversal is not at the root of the tree, which means this is a
+ray whose traversal was suspended. Because a suspended ray would never be sent
+to a node for any other purpose than an intersection test, worker C immediately
+tests for intersections against its geometry. For the purpose of this example,
+let's say it hits nothing.
+
+\textbf{TODO: figure}
+
+The traversal state is then reinstated (node 7, \emph{from the parent}) and
+worker C jumps immediately to where it left off, testing the bounds of C's
+sibling, worker D. It hits the bounds, so again, we pack up the traversal
+state (now node index 8 and \emph{from the sibling}) and ship off the ray to
+worker D.
+
+\textbf{TODO: figure}
+
+Worker D goes through the same process. Since the ray is suspended, it checks
+its local geometry for intersections. Let's say it hits a mesh 42 at distance
+of 10 units along the ray. This forms a hit record, which is stored inside the
+ray (worker D, mesh 42, 10 units).
+
+Again we reinstate the traversal state (node 8, \emph{from the sibling}) and
+traverse back up to the parent (node 6). Since our state entering node 6 is
+\emph{from the child}, we move next to node 9, another leaf node, and test
+its bounds against the ray.
+
+\textbf{TODO: figure}
+
+Let's say this also passes. However, the ray intersects the bounds at a distance
+of 20 units along the ray. Because the closest an intersection on worker E
+could possibly occur is further away, there is no point to sending the ray to
+worker E. Thus, we continue the traversal up the tree until we reach the root
+again.
+
+Once we reach the root, we know the top-level traversal is complete. At this
+point we only need to consult the ray's hit record to determine which mesh on
+which worker yields the closest intersection.
+
+In the best case, a ray is generated on, intersects only with, and is shaded on
+a single worker. These rays never need to touch the network. In the worse case,
+the ray potentially intersects with all nodes, so it must touch every node in
+the tree before being sure of its intersection point.
+
+In addition, there are two interesting corner cases to consider.
+
+\begin{itemize}
+    \item If the ray is generated on a node that it doesn't intersect until
+        later in the traversal, it consumes one additional network hop at the
+        very beginning of the traversal.
+    \item If the ray completes its traversal on a worker different from that
+        which had the closest intersection, it consumes one additional network hop
+        at the end of the traversal to put the ray on the correct node for
+        shading.
+\end{itemize}
+
+Thus, the worst case scenario actually touches $n + 2$ workers, where $n$ is the
+number of workers in the cluster.
+
+In Chapter \ref{futurework}, we discuss possible optimizations that may eliminate
+both of these corner cases. Additionally in Chapter \ref{results}, we show that
+in practice, the number of workers that each ray touches is less than or equal
+to the predicted $O(log\;n)$ expansion of the binary tree for the vast majority
+of rays in the scene.
 
 \subsection{Illumination and Shading}
 \label{shading}
