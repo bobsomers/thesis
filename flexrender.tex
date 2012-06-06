@@ -203,7 +203,7 @@ field of Computer Science.
 For now and the foreseeable future, it seems, surfaces will be our bread and
 butter. Many methods have been developed for describing surfaces to computer
 programs, such as level sets, implicitly defined surfaces from mathematical
-equations, and curvalinear forms such as parametric splines. The undisputed
+equations, and curvilinear forms such as parametric splines. The undisputed
 champion of surface representations, however, has been the polygonal mesh.
 Countless man-years of research and development has yielded efficient
 techniques for processing meshes of interconnected polygons at blistering
@@ -221,7 +221,7 @@ complexity.
 \section{Parallel Rendering}
 \label{parallel}
 
-Graphics has long been said to be a problem that is \emph{embarrasingly parallel},
+Graphics has long been said to be a problem that is \emph{embarrassingly parallel},
 given that many graphics algorithms operate on pixels independently. Graphics
 processing units (GPUs) have exploited this fact for many years to achieve
 amazing throughput of graphics primitives in real-time. Ray tracing in
@@ -280,14 +280,14 @@ Thus, our work describes the following core contributions:
 In particular, we show that FlexRender can achieve speedups that exceed an
 order of magnitude over the traditional parallelization approach, and can
 naturally self-regulate the cluster of workers to keep the memory overhead due
-to message queueing around 1\% of each worker's system memory.
+to message queuing around 1\% of each worker's system memory.
 
 \textbf{TODO: Triple check that claim with Toy Store results.}
 
 \chapter{Background}
 \label{background}
 
-The FlexRender architecture builds on the four fundamenal building blocks
+The FlexRender architecture builds on the four fundamental building blocks
 described here. First, we discuss the linearity of light (Section \ref{radiometry}),
 which is critical to understanding why FlexRender produces a correct composite
 image from pieces rendered by different workers. Next, we give a general
@@ -334,7 +334,7 @@ observations, which FlexRender explicitly exploits:
         will be the same as if all the work was performed on a single worker.
     \item[Transmittance models energy conservation.] If we store the amount of
         energy traveling along a ray (the \emph{transmittance}) with the ray
-        itself, we need not know anything about the preceeding rays or state
+        itself, we need not know anything about the preceding rays or state
         that brought this ray into existence. We can compute its contribution
         to the scene independently and ensure that linearity and energy
         conservation are both respected.
@@ -565,7 +565,7 @@ Specifically, a fat ray contains the following data:
         network.
     \item The \textbf{number of workers touched} by the ray so far. Not
         necessary for rendering. Only used for analysis.
-    \item A \textbf{next pointer} for locally queueing rays as described in
+    \item A \textbf{next pointer} for locally queuing rays as described in
         Section \ref{queues}. Obviously not valid over the network.
 \end{itemize}
 
@@ -610,7 +610,7 @@ The configuration consists of basic information about how the scene is to be
 rendered, such as the image dimensions, the workers participating in the render,
 etc. In addition, the configuration specifies the minimum and maximum bounding
 extents of the scene. This is used in the asset distribution step for driving
-the Morton coding discretation along each axis.
+the Morton coding discretization along each axis.
 
 Once the renderer has read in the configuration, it opens client connections
 to each worker and sends the configuration data to them. Similarly, each worker
@@ -738,7 +738,7 @@ queues in the following order:
 Organizing the processing order of rays as a priority queue based on ray type
 is an essential step in minimizing the exponential explosion of work than can
 occur if too many primary rays enter the system at a time. This helps reduce
-memory usage required for queueing messages because new work is not generated
+memory usage required for queuing messages because new work is not generated
 until the system is ready to handle it.
 
 \subsection{Primary Ray Casting}
@@ -772,10 +772,10 @@ primary ray casting, we temporarily disable primary ray casting on that worker
 until the others catch up.
 
 Because the other workers will not generate primary rays as long as they still
-have other rays in their queues to process, the priority queueing, shared
+have other rays in their queues to process, the priority queuing, shared
 ray casting responsibilities, and temporary pausing of primary ray generation at
 runaway workers provides a simple means of self-regulating the cluster that
-works remarkably well and minimizing the memory overhead for message queueing.
+works remarkably well and minimizing the memory overhead for message queuing.
 We will examine the overhead in detail in Chapter \ref{results}.
 
 \subsection{Distributed BVH Traversal}
@@ -794,7 +794,7 @@ the renderer maintains a list of all workers that have received at least one
 emissive mesh. This list is synchronized with all workers right before
 rendering begins.
 
-Once a point has been indentified for shading with intersection testing, we
+Once a point has been identified for shading with intersection testing, we
 need to determine the visibility of that point with respect to the light sources
 in the scene. In a traditional ray tracer, you simply cast rays from the point
 of intersection to samples on the surface of the light to determine visibility.
@@ -845,7 +845,7 @@ for speed. A shader may do any (or none) of the following:
         point being shaded (such as the interpolated surface normal and texture
         coordinates).
     \item Accumulate computed light values into the primary RGB buffers, or
-        any auxilliary named buffer.
+        any auxiliary named buffer.
     \item Cast additional rays into the scene.
 \end{enumerate}
 
@@ -1029,7 +1029,7 @@ using unions, the size could probably be reduced further. Ideally a fat ray
 would fit on a single cache line and the same aligned allocation strategy could
 be applied to fat rays as well.
 
-\section{GPGPU and Heterogenous Architectures}
+\section{GPGPU and Heterogeneous Architectures}
 \label{hetergenous}
 
 One of FlexRender's strengths is that it decouples the ray tracing computations
