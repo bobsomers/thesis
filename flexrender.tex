@@ -20,6 +20,7 @@
 
 \usepackage{textcomp}
 \usepackage{url}
+\usepackage{float}
 \usepackage{listings}
 \lstset{
 	language=[Visual]C++,
@@ -242,7 +243,13 @@ can be difficult to fill all the gaps with useful work. Thus, keeping the chips
 "hot" by reducing time spent waiting on data is critical to achieve maximum
 performance, and is an extremely challenging problem.
 
-\textbf{TODO: graph of latencies in the memory hierarchy}
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=140mm]{figures/memorylatency.png}
+    \captionfonts
+    \caption{Typical memory latencies in a modern commodity machine. Gigabit ethernet latency included for comparison.}
+    \label{fig:memlatency}
+\end{figure}
 
 Because of this fact, there is a lot more to parallel rendering than initially
 meets the eye. Graphics may indeed by highly parallel, but its voracious appetite
@@ -349,7 +356,13 @@ shooting rays out of the camera and computing their intersections with mathemati
 defined surfaces. One ray is shot through the center of every pixel, and the first
 object that ray intersects is what is seen through the camera at the pixel.
 
-\textbf{TODO: picture of ray tracing}
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=110mm]{figures/raytracing.png}
+    \captionfonts
+    \caption{Ray tracing models light by shooting rays into the scene from the camera. Credit: ``Henrik" (Creative Commons License)}
+    \label{fig:raytracing}
+\end{figure}
 
 In 1980, Whitted published an extention of this idea \cite{whitted:1980},
 which continued the process at the point of intersection. At that point a shadow
@@ -359,7 +372,13 @@ rays recursively, casting new rays into the scene, originating at the intersecti
 point, whose directions are computed by reflecting or refracting them about the
 surface normal at the point of intersection.
 
-\textbf{TODO: picture of reflection/refraction}
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=90mm]{figures/reflectionrefraction.png}
+    \captionfonts
+    \caption{Reflection and refraction are modeled by casting new rays from intersection points. Credit: ``Stannered" (Creative Commons License)}
+    \label{fig:reflectrefract}
+\end{figure}
 
 Ray tracing has significant advantages over other rendering algorithms (such
 as scanline rasterization) because of it more closely models the way light acts
@@ -399,7 +418,13 @@ test. Since it is effectively binary search, it is unsurprising that it reduces
 intersection searching from linear time $O(n)$ to logarithmic time $O(log\;n)$
 (assuming the BVH is well formed).
 
-\textbf{TODO: picture of bvh}
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=140mm]{figures/bvh.png}
+    \captionfonts
+    \caption{Bounding volume hierarchies partition primitives into a binary tree structure. Credit: ``Schreiberx" (Creative Commons License)}
+    \label{fig:bvh}
+\end{figure}
 
 BVHs are trees where each node is defined by a bounding volume, such as a box
 or a sphere, that describes the extents of a region of 3D space. All of the
@@ -459,7 +484,13 @@ Morton coding is a method for mapping coordinates in multidimensional space to
 a single dimension. In particular, walking the multidimensional space with a
 Morton coding produces a space-filling Z-order curve.
 
-\textbf{TODO: pictures of Z-order curves}
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=110mm]{figures/zorder.png}
+    \captionfonts
+    \caption{Examples of two dimensional and three dimensional Z-order curves. Credit: ``David Eppstein" and ``Robert Dickau" (Creative Commons License)}
+    \label{fig:zorder}
+\end{figure}
 
 More concretely, FlexRender needs a way to distribute a large scene to many
 workers in a spatially coherent way. If the geometry on each worker consists
@@ -568,14 +599,20 @@ There are two potential roles a machine can play during the rendering process.
 \end{description}
 
 From a network perspective, the architecture is simply client/server connected
-in a star configuration. Each worker exposes a server which receives and
+in a star topology. Each worker exposes a server which receives and
 processes messages, and holds client connections open to every other worker for
 passing messages around the cluster. The renderer also holds a client connection
 to every worker for sending configuration data, preparing up the cluster for rendering
 (described in Section \ref{sync}), and monitoring render progress (described in
 Section \ref{stats}).
 
-\textbf{TODO: diagram of network architecture}
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=100mm]{figures/netarch.pdf}
+    \captionfonts
+    \caption{Workers maintain connections with all other workers in the cluster. The renderer does the same.}
+    \label{fig:netarch}
+\end{figure}
 
 \subsection{Fat Rays}
 \label{fatrays}
@@ -769,7 +806,14 @@ are three different types of rays in FlexRender:
       \ref{shading}).
 \end{itemize}
 
-\textbf{TODO: figure demonstrating different ray types}
+% TODO:
+%\begin{figure}[h!]
+%    \centering
+%    \includegraphics[width=100mm]{figures/raytypes.pdf}
+%    \captionfonts
+%    \caption{The three different ray types and their interactions.}
+%    \label{fig:raytypes}
+%\end{figure}
 
 An important point to note about these rays is the sequence of their lifetimes.
 Their purposes will become more clear in the following sections, but the order
@@ -863,21 +907,39 @@ We will examine the overhead in detail in Chapter \ref{results}.
 \label{traversal}
 
 To understand how distributed traversal of the top-level BVH works, consider
-the following example traversal of this top-level tree with 5 workers
-participating in the render.
+the following example traversal of this top-level tree with 5 workers (letters
+A through E) participating in the render.
 
-\textbf{TODO: figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=100mm]{figures/traversal1.pdf}
+    \captionfonts
+    \caption{Example top-level BVH with 5 workers.}
+    \label{fig:traversal1}
+\end{figure}
 
 The worker who generates the ray begins traversing the tree by checking the ray
 against the bounds of the left-hand child. If the ray fails the test, we move
 to check its sibling, right-hand child.
 
-\textbf{TODO: figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=100mm]{figures/traversal2.pdf}
+    \captionfonts
+    \caption{The ray fails its first test and moves to the sibling node.}
+    \label{fig:traversal2}
+\end{figure}
 
 This test passes, so we continue down the tree to that node's left-hand child.
 Let us assume this test also passes.
 
-\textbf{TODO: figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=100mm]{figures/traversal3.pdf}
+    \captionfonts
+    \caption{Traversal down the left-hand nodes continues as long as bounding tests pass.}
+    \label{fig:traversal3}
+\end{figure}
 
 We test our first leaf node, and it passes. This indicates we must test the
 geometry on the worker itself. This is where our primary modification to the
@@ -895,7 +957,13 @@ to a node for any other purpose than an intersection test, worker C immediately
 tests for intersections against its geometry. For the purpose of this example,
 let's say it hits nothing.
 
-\textbf{TODO: figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=100mm]{figures/traversal4.pdf}
+    \captionfonts
+    \caption{The ray is sent to worker C and tested against local geometry for intersections.}
+    \label{fig:traversal4}
+\end{figure}
 
 The traversal state is then reinstated (node 7, \emph{from the parent}) and
 worker C jumps immediately to where it left off, testing the bounds of C's
@@ -903,7 +971,13 @@ sibling, worker D. It hits the bounds, so again, we pack up the traversal
 state (now node index 8 and \emph{from the sibling}) and ship off the ray to
 worker D.
 
-\textbf{TODO: figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=100mm]{figures/traversal5.pdf}
+    \captionfonts
+    \caption{The ray is sent to worker D and again tested against local geometry for intersections.}
+    \label{fig:traversal5}
+\end{figure}
 
 Worker D goes through the same process. Since the ray is suspended, it checks
 its local geometry for intersections. Let's say it hits a mesh 42 at distance
@@ -915,13 +989,27 @@ traverse back up to the parent (node 6). Since our state entering node 6 is
 \emph{from the child}, we move next to node 9, another leaf node, and test
 its bounds against the ray.
 
-\textbf{TODO: figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=100mm]{figures/traversal6.pdf}
+    \captionfonts
+    \caption{With successful hit record in hand, traversal continues back up the tree.}
+    \label{fig:traversal6}
+\end{figure}
 
 Let's say this also passes. However, the ray intersects the bounds at a distance
 of 20 units along the ray. Because the closest an intersection on worker E
 could possibly occur is further away, there is no point to sending the ray to
 worker E. Thus, we continue the traversal up the tree until we reach the root
 again.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=100mm]{figures/traversal7.pdf}
+    \captionfonts
+    \caption{Worker E's bounding test passed, but was further away than the hit record. We arrive at the root and traversal is complete.}
+    \label{fig:traversal7}
+\end{figure}
 
 Once we reach the root, we know the top-level traversal is complete. At this
 point we only need to consult the ray's hit record to determine which mesh on
