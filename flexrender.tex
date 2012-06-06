@@ -636,6 +636,43 @@ All of the code used in graphics computation is shared between both our baseline
 implementation and FlexRender. This ensures fair comparisons when we analyze our
 results in Section \ref{results}.
 
+\subsection{Overview}
+\label{overview}
+
+In general, rendering with FlexRender proceeds in the following way:
+
+\begin{enumerate}
+    \item The renderer reads in the scene data and defines the maximum bounding
+        extents of the entire scene. As data is read in, it is distributed to
+        the workers using the Morton coding.
+    \item Once the scene is distributed, workers build BVHs in parallel for
+        their respective ``chunk" of the scene. They share their maximum bounding
+        extents with the renderer.
+    \item The renderer constructs a ``top-level" BVH from the worker bounds and
+        shares this BVH with all the workers.
+    \item Each worker creates its own image buffer. This is where any shading
+        data will be written if it occurs on this worker.
+    \item Each worker begins casting primary rays from the camera and tests for
+        intersections (to find the nearest geometry that the ray hits).
+        \begin{itemize}
+            \item During intersection testing, rays may be forwarded over the
+                network to another worker if they travel through the bounding
+                extents of that worker.
+            \item Once the nearest intersection is found illumination rays are
+                created and sent to workers that have lights. These workers
+                send light rays back towards the point of intersection to test
+                for occlusion.
+            \item If the light rays reach the intersection, the point is shaded
+                because it is in direct view of the light.
+        \end{itemize}
+    \item Once all rays have been accounted for, workers send their image
+        buffers back to the renderer, which composites them all together into
+        a final image.
+\end{enumerate}
+
+In the next few sections, we'll examine each part of this process in greater
+detail.
+
 \section{Render Preparation}
 \label{prep}
 
@@ -670,7 +707,7 @@ is loaded, the renderer takes the following actions:
    \item Computes the Morton code of the mesh centroid. This determines
       which worker the mesh will be sent to.
    \item Ensures that any asset dependencies (such as materials,
-      shaders, and textures) for this mesh have been sent the designated worker.
+      shaders, and textures) for this mesh have been sent to the designated worker.
    \item Sends the mesh data to the designated worker.
    \item Deletes the mesh data from its own memory.
 \end{enumerate}
@@ -732,6 +769,8 @@ are three different types of rays in FlexRender:
       \ref{shading}).
 \end{itemize}
 
+\textbf{TODO: figure demonstrating different ray types}
+
 An important point to note about these rays is the sequence of their lifetimes.
 Their purposes will become more clear in the following sections, but the order
 is as follows:
@@ -753,8 +792,8 @@ are the most likely to die without generating more rays.
 \subsection {Ray Queues}
 \label{queues}
 
-Each worker has ray queue, with the typical push and pop operations for adding
-and remove rays from the queue. This queue internally is implemented as three
+Each worker has a ray queue, with the typical push and pop operations for adding
+and removing rays from the queue. This queue internally is implemented as three
 separate queues, where rays are separated by type. It also contains information
 about the scene camera, for generating new primary rays.
 
@@ -797,7 +836,7 @@ in the direction of our lonely, rayless worker. By giving the worker control
 over primary ray casting for a portion of the scene, we give workers the ability
 to generate work when they have nothing to do.
 
-However, to quote a comic book character, ``with great power comes great
+However, to quote Uncle Ben, ``with great power comes great
 responsibility". Consider the case where a worker contains mostly background
 geometry. It will be receiving work from others infrequently because its size
 in screen space is small, but yet it is in charge of casting primary rays for
@@ -925,7 +964,7 @@ effects:
 \label{completion}
 
 In a traditional recursive ray tracer, determining when the render is complete
-is a simple task. Once the last primary ray pops its final stack frame frame
+is a simple task. Once the last primary ray pops its final stack frame
 the render is over. In FlexRender, however, no one worker (or the renderer, for
 that matter) knows where the ``last ray" is. To determine when a render is
 complete, the workers report rendering statistics to the renderer at regular
@@ -975,7 +1014,7 @@ finished and risking concluding it too early.
 
 Once the render has been deemed ``complete", the renderer requests the image
 buffers from each worker. Because all rendering was computed by respecting
-linearity, computing the a pixel in the final output image is just a matter
+linearity, computing a pixel in the final output image is just a matter
 of summing corresponding pixels in the worker buffers.
 
 This can yield some interesting intermediate images. Each worker's buffer
