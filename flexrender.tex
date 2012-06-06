@@ -343,7 +343,49 @@ observations, which FlexRender explicitly exploits:
 \section{Ray Tracing}
 \label{raytracing}
 
-\textbf{TODO: general overview (mention Monte Carlo)}
+\emph{Ray tracing} is a method for rendering a scene from some input description.
+The ray casting algorithm, published by Appel in 1968 \cite{appel:1968}, proposed
+shooting rays out of the camera and computing their intersections with mathematically
+defined surfaces. One ray is shot through the center of every pixel, and the first
+object that ray intersects is what is seen through the camera at the pixel.
+
+\textbf{TODO: picture of ray tracing}
+
+In 1980, Whitted published an extention of this idea \cite{whitted:1980},
+which continued the process at the point of intersection. At that point a shadow
+ray is cast from the intersection point to the light to determine if the
+point is illuminated or in shadow. He also introduced the notion of tracing
+rays recursively, casting new rays into the scene, originating at the intersection
+point, whose directions are computed by reflecting or refracting them about the
+surface normal at the point of intersection.
+
+\textbf{TODO: picture of reflection/refraction}
+
+Ray tracing has significant advantages over other rendering algorithms (such
+as scanline rasterization) because of it more closely models the way light acts
+in the real world. Effects that are difficult to simulate using other methods
+(such as shadows and correct reflections) fall out of the the algorithm naturally,
+making it an attractive choice.
+
+However, it suffers from performance problems. Without a method for reducing
+the number of intersection tests in a scene, each ray must be tested against
+every object, leading to $O(n)$ performance. Since rays are cast for each pixel
+in the image (or multiple rays per pixel if stratified supersampling is used
+for antialiasing) the number of rays scales with the resolution of the output
+image.
+
+Lastly, to approximate shadows with soft edges and other subtle lighting effects,
+Monte Carlo integration is typically used when casting the shadow rays to the light.
+This means that for every intersection, $n$ sample points are computed on the surface
+of the light and a shadow ray is cast from the intersection point to each sample
+point. The results of those casts are weighted by $\frac{1}{n}$ when computing the
+shaded value at a point. Reflection and refraction also increase the number of
+rays in play. To compute global illumination (the effect of light reflecting off
+of all surfaces in the scene), the ray count increases dramatically.
+
+Although it is common to see an exponential explosion of rays, thankfully we
+have algorithms for significantly reducing the number of intersection tests we
+need to compute per ray, which we will discuss in Section \ref{bvhs}.
 
 \section{Bounding Volume Hierarchies}
 \label{bvhs}
