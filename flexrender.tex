@@ -137,8 +137,6 @@ parallel. The results of our implementation show over an order of magnitude
 speedup in rendering time compared the traditional approach, while keeping
 memory overhead for message queuing around 1\%.
 
-\textbf{TODO: Triple check that claim with the Toy Store scene results.}
-
 \end{abstract}
 
 %\begin{acknowledgements}
@@ -281,8 +279,6 @@ In particular, we show that FlexRender can achieve speedups that exceed an
 order of magnitude over the traditional parallelization approach, and can
 naturally self-regulate the cluster of workers to keep the memory overhead due
 to message queuing around 1\% of each worker's system memory.
-
-\textbf{TODO: Triple check that claim with Toy Store results.}
 
 \chapter{Background}
 \label{background}
@@ -536,42 +532,143 @@ most-significant to least-significant bit.
 \chapter{Related Work}
 \label{relatedwork}
 
-\textbf{TODO}
+Finding ways to deal with huge geometry has been a common theme in Computer
+Graphics for quite a while. Early techniques generally focused on faking
+high detail through clever use of textures and model swapping, since the
+hardware of the day simply wasn't capable of handling massive amounts of data.
+
+More recently, techniques have focused around actually having the the full
+geometry available, but acknowledging that it won't fit in main memory and
+providing methods for efficiently caching data that is out-of-core.
+
+We examine these workarounds in Section \ref{workarounds}, and provide a brief
+overview of relevant work in parallel rendering in Section \ref{parallelbg}.
+We specifically discuss the Kilauea renderer, which had similar ambitions as
+FlexRender but is significantly different in several ways.
 
 \section{Big Geometry Workarounds}
-\label{managingcomplexity}
-
-\textbf{TODO}
+\label{workarounds}
 
 \subsection{Normal Mapping}
 \label{normalmaps}
 
-\textbf{TODO: seminal work}
+Normal mapping is a technique for simulating high resolution detail on a mesh
+during shading while using low resolution geometry. The idea of extracting
+detail from a high resolution mesh was first proposed by Krishnamurthy and
+Levoy in 1996 \cite{krishnamurthy:1996}, which fit displacement maps over
+from non-uniform rational B-splines (NURBS).
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=100mm]{images/normalmapping.png}
+    \captionfonts
+    \caption{Normal mapping uses a texture to store high resolution shading normals on low resolution geometry.}
+    \label{fig:netarch}
+\end{figure}
+
+Two additional papers completed the puzzle. In 1998 Cohen et al. \cite{cohen:1998}
+presented a method for rendering high detail at shading time by storing normals
+in the texture instead of using displacement maps, and Cignoni et at. \cite{cignoni:1998}
+showed how this could be done with two meshes that were created independently.
+
+Normal mapping is extensively used today, especially in real-time graphics
+applications. However, it displays visual artifacts, particularly around the
+edges of the mesh (where it's clearly apparent the surface is not high detail)
+or areas where the texture is scrunched or streched.
 
 \subsection{Level of Detail}
 \label{levelofdetail}
 
-\textbf{TODO: seminal work}
+Level of detail is a technique for replacing high resolution meshes with lower
+resolution versions when they are some specified distance away from the viewer.
+The idea was pioneered by James H. Clark in 1976 \cite{clark:1976}, when he
+noticed that there was no reason to use high resolution geometry when the
+resulting representation on the screen was tiny.
+
+This technique is also still heavily used in real-time graphics applications
+today. However it suffers from a few problems. The first is that multiple
+resolutions of the mesh must be available. The second is that it is somewhat
+depending on the size that the final image is viewed. A mesh may be small in
+screen space compared to the size of the image, but on a movie-theater sized
+screen it could very well still be quite large when viewed.
 
 \subsection{Out-of-Core}
 \label{outofcore}
 
-\textbf{TODO: dreamworks PBGI paper, panta ray for directional occlusion}
+Recent research have acknowledged that rendering data simply won't fit into
+main memory any more, and have developed techniques for efficiently managing
+a cache of rendering data in main memory. In 2011, Tabellion et al. \cite{tabellion:2011}
+presented a technique for dealing with huge point clouds used in global
+illumination. They showed that their method can process 88 GB of point cloud
+data with a cache of just 2 GB, and can render 6.8 GB of point cloud data with
+cache hit rates of over 99\%.
+
+One year earlier, Pantaleoni et at. \cite{pantaleoni:2010} showed that their
+software developed for Avatar also was very efficient at dealing with out-of-core
+data. They used ray tracing to generate directional occlusion data, which was
+compressed into spherical harmonics. The spherical harmonics were used at render
+time (they did not directly ray trace the scenes during rendering). In particular,
+they also used hierarchical BVHs with a single ``top-level" tree as FlexRender
+does. However, they used it for chunking the scene into manageable units of work
+that could be loaded and unloaded from main memory quickly.
 
 \section{Parallel Rendering}
 \label{parallelbg}
 
-\textbf{TODO}
-
 \subsection{Cooperative Networked Rendering}
 \label{networked}
 
-\textbf{TODO: how we differ from kilauea (refer to subsections) \cite{kato:2002}}
+Without a doubt, the most similar piece of research to FlexRender is Kilauea
+\cite{kato:2002}, a massively parallel networked renderer developed at Square
+USA in 2002. Similarly to our work, it uses worker machines connected on a
+network to keep the entire scene geometry in core. However, there are three
+main differences in our approach.
+
+\begin{description}
+    \item[Geometry Distribution] \hfill \\
+        Kilauea randomly distributes scene geometry to
+        its workers, the casts intersections rays through all workers
+        simultaneously. This may produce multiple candidate intersections. The
+        results from each worker are gathered and a winner is picked using a
+        standard depth test. This makes the pipeline highly senstive to extra
+        latency on any of the workers, because everyone is waiting for the
+        results to run the depth test.
+
+        In contrast, FlexRender attempts to keep geometry spatially local among
+        its workers. This allows us to build a hierarchical spatial acceleration
+        structure over the workers and reduce the number of network hops we need
+        to make to establish the correct intersection.
+    \item[Shading Secondary Rays] \hfill \\
+        When Kilauea decides to compute the shading value of a bounced ray, it
+        suspends execution of the shader and keeps it around until the bounced
+        ray comes back through the system. Similarly to FlexRender, they keep
+        a priority queue for rays to process those most likely to terminate
+        first.
+
+        FlexRender maintains the source pixel and transmittance of each ray as
+        state, so the suspension of shaders (and associated overhead) is
+        unnecessary. Each worker has its own image buffer, which is composited
+        into the final image at the end, respecting linearity.
+    \item[Adaptability to Heterogeneous Architectures] \hfill \\
+        Because Kilauea needs the results from every worker before performing
+        the depth test, it is extremely latency sensitive. This encourages
+        homogeneity among workers, and makes adding new workers into the cluster
+        with vastly different machine architectures (such as GPGPU) or performance
+        characteristics problematic.
+
+        In contrast, workers in a FlexRender cluster are never waiting on
+        the results from another worker. Thus, new machines can be dropped into the
+        cluster without regard for how they will effect the latency of the entire
+        system. For example, a GPGPU worker might batch up requests and outsource
+        them to the GPU only when it can effectively amortize the cost of the
+        memory bus transfer.
+\end{description}
 
 \subsection{General Purpose GPU Rendering}
 \label{gpgpu}
 
-\textbf{TODO: ray batching, parallel BVH construction, branchy/memory drawbacks (shaders)}
+We will cover a few selected papers that highlight GPGPU ray tracing, ray packets,
+and parallel BVH construction.
 
 \chapter{FlexRender Architecture}
 \label{architecture}
@@ -1260,7 +1357,118 @@ geometry it controlled.
 \chapter{Results}
 \label{results}
 
-\textbf{TODO: Find whoever booted the 255 lab machines into Windows and make them pay. Nobody does real Computer Science on Windows!}
+\section{Experimental Setup}
+\label{setup}
+
+For testing, we used 8 HP xw6400 workstations with dual-core Intel Core 2 Duo E8400
+processors clocked at 3 GHz. Each workstation had 4 GB of system RAM, a 4 GB
+swap partition, and was running CentOS 6.
+
+On the software side, FlexRender consists of slightly over 13,000 lines of code. Of
+that, 80\% is C++ (with fairly extensive use of C++11), 17\% is Lua (scene and
+shader support libraries), and 3\% is Bash script used for building library dependencies.
+
+We leverage several popular open source libraries:
+
+\begin{itemize}
+    \item \textbf{LuaJIT}, for a fast implementation of of the Lua programming language.
+    \item \textbf{libuv}, the C library behind Node.js, for asynchronous networking and thread pools.
+    \item \textbf{MsgPack}, for C++ class serialization.
+    \item \textbf{GLM}, a C++ implementation of the GLSL math specification.
+    \item \textbf{OpenEXR}, for writing full 32-bit float HDR images.
+\end{itemize}
+
+We also made use of the \textbf{pfstools} and \textbf{pdiff} software packages
+for tone mapping our output images and computing perceptual diffs respectively.
+
+\section{Toy Store}
+\label{toystore}
+
+Our test scene, ``Toy Store", has a geometric complexity of nearly 42 million
+triangles. It consists of 1.09 GB of mesh data and 5 GB of BVH data once the
+acceleration structures are built.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=140mm]{images/toystore.png}
+    \captionfonts
+    \caption{The ``Toy Store" scene used for benchmarking FlexRender.}
+    \label{fig:toystore}
+\end{figure}
+
+\subsection{Traditional Method}
+\label{toystoretraditional}
+
+The traditional method works by chopping up the image into several vertical
+slices, with a different machine responsible for each slice. The slices are
+then reassembled to form the final output image.
+
+The time for each machine to complete each phase of rendering (loading the
+scene, building the BVH, and rendering its slice of the image) is shown
+in \ref{tb:traditionaltimes}. In particular, the total length of the render
+would take 1868 seconds (the slowest time), because the last slice is needed
+before the final image can be reassembled.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l||c|c|c|c|c|c|c|c|}
+    \hline
+    & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 \\
+    \hline
+    \hline
+    Loading & 302 & 306 & 307 & 303 & 291 & 303 & 305 & 309 \\
+    \hline
+    Building BVH & 188 & 201 & 193 & 202 & 214 & 208 & 190 & 208 \\
+    \hline
+    Rendering & 432 & 652 & 953 & 1363 & 955 & 805 & 619 & 324 \\
+    \hline
+    \hline
+    Total & 922 & 1159 & 1453 & 1868 & 1460 & 1316 & 1114 & 841 \\
+    \hline
+\end{tabular}
+\caption{Time (in seconds) for individual workers to complete each phase using the traditional method.}
+\label{tb:traditionaltimes}
+\end{center}
+\end{table}
+
+\subsection{FlexRender}
+\label{toystoreflexrender}
+
+FlexRender shows an outstanding speedup in construction of the BVH, due to its
+ability to build it in parallel since each worker has spatially local geometry.
+The render performance is currently slower than it should be due to
+some problems with the test setup that will be rectified over the next few
+days.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l||c|c|c|c|c|c|c|c|}
+    \hline
+    & FlexRender & Traditional & Speedup \\
+    \hline
+    \hline
+    Loading & 346 & 303.25 (avg) & 0.876x \\
+    \hline
+    Building BVH & 17 & 200.5 (avg) & 11.794x \\
+    \hline
+    Rendering & 1083 & 762.875 (avg) & 0.704x \\
+    \hline
+    \hline
+    Total & 1446 & 1868 (slowest) & 1.292x \\
+    \hline
+\end{tabular}
+\caption{Time (in seconds) for individual workers to complete each phase using the traditional method.}
+\label{tb:traditionaltimes}
+\end{center}
+\end{table}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=120mm]{images/toystoredistribution.png}
+    \captionfonts
+    \caption{The individual worker image buffers that are combined to form the final image.}
+    \label{fig:toystoredist}
+\end{figure}
 
 \chapter{Future Work}
 \label{futurework}
