@@ -587,7 +587,7 @@ At its core, workers in the cluster are just ray processors. We discuss how they
 manage ray messages in Section \ref{queues}, how they generate new work with
 stable memory usage in Section \ref{primaryrays}, how we decide when and where
 to send rays over the network in Section \ref{traversal}, and how shading is computed
-when lights and occluders may exist anywhere in the cluster in Section \ref{shading}.
+when lights and occluders may exist anywhere in the cluster in Section \ref{illumination}.
 
 Finally, we wrap up our discussion with how we monitor the progress of the
 render in Section \ref{stats} and how we composite the final image from its
@@ -650,9 +650,9 @@ Specifically, a fat ray contains the following data:
     \item The ray's \textbf{transmittance}, or the amount that it contributes
         to the source pixel.
     \item The \textbf{emission} from a light source carried along the ray (if
-        any). Described in Section \ref{shading}.
+        any). Described in Section \ref{illumination}.
     \item The \textbf{target intersection point} of the ray, if any. Described
-        in Section \ref{shading}.
+        in Section \ref{illumination}.
     \item The \textbf{traversal state} of the top-level BVH. Described in
         Section \ref{traversal}.
     \item The \textbf{hit record}, which contains the worker, mesh, and $t$
@@ -817,10 +817,10 @@ are three different types of rays in FlexRender:
       a point in space at which we would like to compute shading.
    \item \textbf{Illumination rays} are essentially copies of intersection
       rays that have terminated. They are sent to workers who have emissive
-      geometry (described in Section \ref{shading}).
+      geometry (described in Section \ref{illumination}).
    \item \textbf{Light rays} are Monte Carlo samples that contribute direct
       illumination to a point that a worker is shading (described in Section
-      \ref{shading}).
+      \ref{illumination}).
 \end{itemize}
 
 \begin{figure}[h!]
@@ -1014,10 +1014,10 @@ its bounds against the ray.
 \end{figure}
 
 Let's say this also passes. However, the ray intersects the bounds at a distance
-of 20 units along the ray. Because the closest an intersection on worker E
-could possibly occur is further away, there is no point to sending the ray to
-worker E. Thus, we continue the traversal up the tree until we reach the root
-again.
+of 20 units along the ray. The closest an intersection on worker E could
+possibly occur is further away, so there is no point to sending the ray to
+worker E. Thus, we don't send the ray to worker E and continue to traverse up
+the tree until we reach the root again.
 
 \begin{figure}[H]
     \centering
@@ -1057,8 +1057,8 @@ in practice, the number of workers that each ray touches is less than or equal
 to the predicted $O(log\;n)$ expansion of the binary tree for the vast majority
 of rays in the scene.
 
-\subsection{Illumination and Shading}
-\label{shading}
+\subsection{Illumination}
+\label{illumination}
 
 There is no special ``light" type in FlexRender, rather only meshes that are
 emissive, which is a property set by the assigned material. Meshes that are
@@ -1080,10 +1080,14 @@ shadow.
 To solve this problem, we simply trace the light rays in the opposite direction.
 Rather than originating from the intersection point and heading in the
 direction of the light, we originate the rays at the light and cast them in the
-direction of the intersection point. If the light ray arrives back at the
-original intersection point after being traced through the cluster, we know that
-its path from the light was unoccluded. This leverages the same efficient method
-for distributed ray tracing that we already developed for testing intersections.
+direction of the intersection point. To support area lights through Monte Carlo
+integration, it is simply a matter of creating multiple light rays with origins
+sampled across the surface of the light.
+
+If the light ray arrives back at the original intersection point after being
+traced through the cluster, we know that its path from the light was unoccluded.
+This leverages the same efficient method for distributed ray tracing that we
+already developed for testing intersections.
 
 Specifically, casting light rays towards an intersection point consists of the
 following operations:
@@ -1100,6 +1104,9 @@ following operations:
     \item Push each light ray into the ray queue and let the cluster process
         them as usual.
 \end{enumerate}
+
+\subsection{Shading}
+\label{shading}
 
 When a light ray arrives at a worker, we simply check that its point of
 intersection is within some epsilon of the target. If it is, we consider the
