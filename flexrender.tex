@@ -692,6 +692,23 @@ et al. \cite{garanzha:2011:bvh} present a method for constructing BVHs on the
 GPU and Wu et al. \cite{wu:2011} present a method for constructing KD-trees on
 the GPU. Both are guided by the surface area heuristic.
 
+\section{MapReduce}
+\label{mapreduce}
+
+Outside of the graphics world there has been great excitement surrounding
+the MapReduce programming paradigm presented by Dean and Ghemawat in 2004
+\cite{dean:2004}. For smaller scenes whose geometry and acceleration structure
+data would fit entirely in-core on a single worker, this may be an interesting
+approach worth exploring.
+
+Northam and Smits \cite{northam:2011} presented a potential MapReduce
+implementation of a ray tracer, but noted that sending large amounts of scene
+data to the workers significantly slowed down scene processing. Their solution
+was to break the scene into small chunks and resolve the winning intersection
+test in the reduce step. While this works just fine, it also does a lot of
+unnecessary work, because many non-winning intersections are computed that
+would have been pruned in a typical BVH traversal.
+
 \chapter{FlexRender Architecture}
 \label{architecture}
 
@@ -741,6 +758,13 @@ passing messages around the cluster. The renderer also holds a client connection
 to every worker for sending configuration data, preparing up the cluster for rendering
 (described in Section \ref{sync}), and monitoring render progress (described in
 Section \ref{stats}).
+
+It is important to note that there is currently no fault tolerance built into
+FlexRender. This decision was entirely due to limited resources and time
+constraints; there is no architectural reason that the system could not be made
+more robust and fault tolerant with the appropriate application of distributed
+systems concepts. To that end, we refer the reader to the distributed systems
+literature.
 
 \begin{figure}[h!]
     \centering
