@@ -569,7 +569,7 @@ from non-uniform rational B-splines (NURBS).
     \includegraphics[width=100mm]{images/normalmapping.png}
     \captionfonts
     \caption{Normal mapping uses a texture to store high resolution shading normals on low resolution geometry.}
-    \label{fig:netarch}
+    \label{fig:normalmapping}
 \end{figure}
 
 Two additional papers completed the puzzle. In 1998 Cohen et al. \cite{cohen:1998}
@@ -1406,8 +1406,6 @@ geometry it controlled.
     \label{fig:linearity}
 \end{figure}
 
-\textbf{TODO: redo this image, the layout sucks}
-
 \chapter{Results}
 \label{results}
 
@@ -1483,7 +1481,7 @@ then reassembled to form the final output image.
     \includegraphics[width=120mm]{images/toystore-sliced.png}
     \captionfonts
     \caption{Slices of the Toy Store scene rendered with 8 machines in the traditional configuration.}
-    \label{fig:toystore}
+    \label{fig:toystoresliced}
 \end{figure}
 
 We report time for each machine to complete each phase of rendering (loading
@@ -1574,7 +1572,13 @@ geometry across the available RAM in the cluster effectively. With the exception
 of one worker, the Morton coding and Z-order curve did a decent job of
 partitioning the scene data evenly.
 
-\textbf{TODO: geometry distribution pie chart}
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=80mm]{figures/facesperworker.png}
+    \captionfonts
+    \caption{Percentage of total geometry that was distributed to each worker.}
+    \label{fig:geomdist}
+\end{figure}
 
 The one worker which did not contain very much geometry was in the top corner
 of the Toy Store closest to the camera. This octant of the scene only contained
@@ -1605,11 +1609,75 @@ methods for reducing or removing these extra network hops.
 \section{Ray Queue Sizes}
 \label{queuesizes}
 
-\textbf{TODO: commentary}
+Keeping the ray queue size small is critical to the long term health of the
+render. If rays begin piling up faster than the cluster can process them,
+eventually the cluster will begin swapping when accessing rays, which violates
+our fundamental performance goal to stay off of disk.
 
-\textbf{TODO: ray queue size vs. time graph}
+Because of this, we benchmarked the ray queue sizes on each worker over time
+when rendering Toy Store on a cluster of 16 workers. Figure \ref{fig:queuesize}
+shows this with each renderer displayed as a different color. Table \ref{tb:rayqueues}
+breaks down the average queue size, as well as the maximum size over the course
+of the entire render and the storage requirements of the maximum size, both in
+terms of raw storage space and a fraction of the system RAM.
 
-\textbf{TODO: ray queue sizes table}
+As Table \ref{tb:rayqueues} shows, most workers sit comfortably below 1\% of
+their RAM being used for queued rays, while the busiest worker used just over
+1\%. This demonstrates that our regulation mechanisms and work throttling is
+working well to keep the cluster from generating more work than it can handle.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=140mm]{figures/queuesize.png}
+    \captionfonts
+    \caption{Number of rays queued on each worker over time. Different colors correspond to different workers.}
+    \label{fig:queuesize}
+\end{figure}
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|c||c|c|c|c|}
+    \hline
+    Worker & Average Queued & Max Queued & Max Storage & Memory Occupancy \\
+    \hline
+    \hline
+    1 & 107 & 12221 & 1.49 MB & 0.04\% \\
+    \hline
+    2 & 506 & 29796 & 3.64 MB & 0.09\% \\
+    \hline
+    3 & 969 & 34970 & 4.27 MB & 0.10\% \\
+    \hline
+    4 & 3116 & 57597 & 7.03 MB & 0.17\% \\
+    \hline
+    5 & 1687 & 36981 & 4.51 MB & 0.11\% \\
+    \hline
+    6 & 1430 & 44053 & 5.38 MB & 0.13\% \\
+    \hline
+    7 & 4070 & 80899 & 9.88 MB & 0.24\% \\
+    \hline
+    8 & 2000 & 16861 & 2.06 MB & 0.05\% \\
+    \hline
+    9 & 3767 & 97429 & 11.89 MB & 0.29\% \\
+    \hline
+    10 & 7921 & 178191 & 21.75 MB & 0.53\% \\
+    \hline
+    11 & 4477 & 69702 & 8.51 MB & 0.21\% \\
+    \hline
+    12 & 4943 & 92043 & 11.24 MB & 0.27\% \\
+    \hline
+    13 & 51164 & 430736 & 52.58 MB & 1.28\% \\
+    \hline
+    14 & 2193 & 45428 & 5.55 MB & 0.14\% \\
+    \hline
+    15 & 0 & 0 & 0 MB & 0.00\% \\
+    \hline
+    16 & 18 & 1374 & 0.17 MB & 0.01\% \\
+    \hline
+\end{tabular}
+\caption{Size of ray queues when rendering Toy Store with a 16-worker FlexRender cluster.}
+\label{tb:rayqueues}
+\end{center}
+\end{table}
 
 \section{Cluster Size}
 \label{clustersize}
