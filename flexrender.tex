@@ -667,8 +667,30 @@ main differences in our approach.
 \subsection{General Purpose GPU Rendering}
 \label{gpgpu}
 
-We will cover a few selected papers that highlight GPGPU ray tracing, ray packets,
-and parallel BVH construction.
+As interest in General Purpose GPU, or GPGPU, computing has increased over
+the last several years, many have decided to port ray tracers to the
+architecture due to the problem's ``embarrassingly parallel" nature. Although
+lots of simple implementations are floating around, only relatively recently
+have researchers started tackling the challenging problems imposed by writing
+a serious ray tracer on a GPGPU architecture device. It may be deceptively
+straightforward to get a simple implementation up and running, but the
+complexity is in the features and details required by a robust renderer.
+
+Probably the most impressive recent work was done by Garanzha et al.
+\cite{garanzha:2011:ray}, which presented a method for ray tracing large scenes that
+are out-of-core on the GPU. Parts of their architecture are similar to FlexRender
+on a single-device scale, specifically their use of multi-level BVHs for data that
+is paged into memory and their use or ray queues to handle rays cast from shaders.
+Their global ray queue, however, is fairly memory intensive, because it can
+potentially store up to 32 million rays.
+
+Another area of intense research has been spatial data structure construction
+on the GPU. Although they usually produce data structures of slightly lower
+quality than their CPU counterparts, these GPU algorithms go to great lengths
+to produce ``high-enough" quality structures with dramatic speedups. Garanzha
+et al. \cite{garanzha:2011:bvh} present a method for constructing BVHs on the
+GPU and Wu et al. \cite{wu:2011} present a method for constructing KD-trees on
+the GPU. Both are guided by the surface area heuristic.
 
 \chapter{FlexRender Architecture}
 \label{architecture}
