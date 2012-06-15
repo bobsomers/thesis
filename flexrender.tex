@@ -137,6 +137,10 @@ parallel. The results of our implementation show over an order of magnitude
 speedup in rendering time compared the traditional approach, while keeping
 memory overhead for message queuing around 1\%.
 
+\textbf{TODO: motivate commodidy machines (price/performance ratio, you already have it, etc.}
+
+\textbf{TODO: bring claims in line with results}
+
 \end{abstract}
 
 %\begin{acknowledgements}
@@ -279,6 +283,8 @@ In particular, we show that FlexRender can achieve speedups that exceed an
 order of magnitude over the traditional parallelization approach, and can
 naturally self-regulate the cluster of workers to keep the memory overhead due
 to message queuing around 1\% of each worker's system memory.
+
+\textbf{TODO: bring claims in line with results}
 
 \chapter{Background}
 \label{background}
@@ -1197,7 +1203,7 @@ number of workers in the cluster.
 In Chapter \ref{futurework}, we discuss possible optimizations that may eliminate
 both of these corner cases. Additionally in Chapter \ref{results}, we show that
 in practice, the number of workers that each ray touches is less than or equal
-to the predicted $O(log\;n)$ expansion of the binary tree for the vast majority
+to the predicted $O(log\;n)$ expansion of the binary tree for the majority
 of rays in the scene.
 
 \subsection{Illumination}
@@ -1400,6 +1406,8 @@ geometry it controlled.
     \label{fig:linearity}
 \end{figure}
 
+\textbf{TODO: redo this image, the layout sucks}
+
 \chapter{Results}
 \label{results}
 
@@ -1435,6 +1443,18 @@ Our test scene, ``Toy Store", has a geometric complexity of nearly 42 million
 triangles. It consists of 1.09 GB of mesh data and 5 GB of BVH data once the
 acceleration structures are built.
 
+The room geometry is relatively simple, but the toys on the shelves are unique
+(non-instanced) copies of the Stanford bunny, Buddha, and dragon models that
+have been remeshed from their highest quality reconstructions down to 14,249
+faces, 49,968 faces, and 34,972 faces respectively. There are 30 toys per
+shelf and 42 shelves in the scene for a total of nearly 1,300 models. Approximately
+one quarter of the models are rendered with a mirror shader. The others have
+a standard Phong shader.
+
+The image was rendered at a resolution of 1024x768 with no subpixel antialiasing,
+10 Monte Carlo samples per light (32 lights in the scene), and a recursion
+depth limit of 3 bounces.
+
 \begin{figure}[h!]
     \centering
     \includegraphics[width=140mm]{images/toystore.png}
@@ -1442,6 +1462,14 @@ acceleration structures are built.
     \caption{The ``Toy Store" scene used for benchmarking FlexRender.}
     \label{fig:toystore}
 \end{figure}
+
+\section{Render Time}
+\label{rendertime}
+
+For discussing render time speedups, we'll consider the specific case of 8
+workers in the traditional configuration vs. 8 workers in the FlexRender
+configuration. We'll cover other cluster sizes in less depth in Section
+\ref{clustersize}.
 
 \subsection{Traditional Method}
 \label{toystoretraditional}
@@ -1458,12 +1486,11 @@ then reassembled to form the final output image.
     \label{fig:toystore}
 \end{figure}
 
-For reference, we ran the traditional method with 8 workers and report time for
-each machine to complete each phase of rendering (loading the scene, building
-the BVH, and rendering its slice of the image) in Table \ref{tb:traditionaltimes}.
-In particular, the total length of the render would take 10,061 seconds (the
-slowest time), because the last slice is needed before the final image can be
-reassembled.
+We report time for each machine to complete each phase of rendering (loading
+the scene, building the BVH, and rendering its slice of the image) in Table
+\ref{tb:traditionaltimes}. In particular, the total length of the render would
+take 10,061 seconds (the slowest time), because the last slice is needed before
+the final image can be reassembled.
 
 \begin{table}
 \begin{center}
@@ -1490,28 +1517,9 @@ reassembled.
 \subsection{FlexRender}
 \label{toystoreflexrender}
 
+\textbf{TODO: commentary}
 
-\begin{table}
-\begin{center}
-\begin{tabular}{|l||c|c|c|c|c|c|c|c|}
-    \hline
-    & FlexRender & Traditional & Speedup \\
-    \hline
-    \hline
-    Loading & 346 & 303.25 (avg) & 0.876x \\
-    \hline
-    Building BVH & 17 & 200.5 (avg) & 11.794x \\
-    \hline
-    Rendering & 1083 & 762.875 (avg) & 0.704x \\
-    \hline
-    \hline
-    Total & 1446 & 1868 (slowest) & 1.292x \\
-    \hline
-\end{tabular}
-\caption{Time (in seconds) for individual workers to complete each phase using the traditional method.}
-\label{tb:traditionaltimes}
-\end{center}
-\end{table}
+\textbf{TODO: render time comparison table}
 
 \begin{figure}[h!]
     \centering
@@ -1520,6 +1528,58 @@ reassembled.
     \caption{The individual worker image buffers that are combined to form the final image.}
     \label{fig:toystoredist}
 \end{figure}
+
+\section{Geometry Distribution}
+\label{geomdist}
+
+To ensure the entire scene stays in core, FlexRender must distribute the
+geometry across the available RAM in the cluster effectively. With the exception
+of one worker, the Morton coding and Z-order curve did a decent job of
+partitioning the scene data evenly.
+
+\textbf{TODO: geometry distribution pie chart}
+
+The one worker which did not contain very much geometry was in the top corner
+of the Toy Store closest to the camera. This octant of the scene only contained
+a fill light facing the rest of the geometry.
+
+\textbf{TODO: geometry distribution table}
+
+\section{Network Hops}
+\label{nethops}
+
+The intent of the top-level BVH is to reduce network cost by only sending
+a ray across the network when we know it ventures into that worker's region
+of space. Since a BVH is a $O(log\;n)$ data structure, we expect that with 8
+workers the average ray would be handled by 3 workers during its lifetime.
+
+\textbf{TODO: workers touched table}
+
+Our results show that 63.2\% of rays are handled by 3 workers or less, and
+nearly 16\% of them never even go out over the network (they are generated on,
+intersect with, and are shaded on a single worker). We also see that 36.8\% of
+rays must touch more than the expected 3 workers.
+
+However, if we include the edge cases mentioned in \ref{traversal}, we see that
+82\% of rays are at or below $O((log\;n) + 1)$ and 90.9\% of rays are at or
+below $O((log\;n) + 2)$. In Section \ref{networkhop} we discuss some potential
+methods for reducing or removing these extra network hops.
+
+\section{Ray Queue Sizes}
+\label{queuesizes}
+
+\textbf{TODO: commentary}
+
+\textbf{TODO: ray queue size vs. time graph}
+
+\textbf{TODO: ray queue sizes table}
+
+\section{Cluster Size}
+\label{clustersize}
+
+\textbf{TODO: commentary}
+
+\textbf{TODO: cluster size table}
 
 \chapter{Future Work}
 \label{futurework}
@@ -1649,5 +1709,7 @@ the cost of bus transfers in GPGPU computing.
 %\addcontentsline{toc}{chapter}{Bibliography}
 
 \section*{Image Results}
+
+\textbf{TODO: assorted renders}
 
 \end{document} much faster 
