@@ -239,7 +239,7 @@ performance, and is an extremely challenging problem.
     \centering
     \includegraphics[width=140mm]{figures/memorylatency.png}
     \captionfonts
-    \caption{Typical memory latencies in a modern commodity machine. Gigabit ethernet latency included for comparison.}
+    \caption{Typical memory latencies in a modern commodity machine. Gigabit Ethernet latency included for comparison.}
     \label{fig:memlatency}
 \end{figure}
 
@@ -354,7 +354,7 @@ object that ray intersects is what is seen through the camera at the pixel.
     \label{fig:raytracing}
 \end{figure}
 
-In 1980, Whitted published an extention of this idea \cite{whitted:1980},
+In 1980, Whitted published an extension of this idea \cite{whitted:1980},
 which continued the process at the point of intersection. At that point a shadow
 ray is cast from the intersection point to the light to determine if the
 point is illuminated or in shadow. He also introduced the notion of tracing
@@ -575,7 +575,7 @@ showed how this could be done with two meshes that were created independently.
 Normal mapping is extensively used today, especially in real-time graphics
 applications. However, it displays visual artifacts, particularly around the
 edges of the mesh (where it is clearly apparent the surface is not high detail)
-or areas where the texture is scrunched or streched.
+or areas where the texture is scrunched or stretched.
 
 \subsection{Level of Detail}
 \label{levelofdetail}
@@ -631,7 +631,7 @@ main differences in our approach.
         its workers, the casts intersections rays through all workers
         simultaneously. This may produce multiple candidate intersections. The
         results from each worker are gathered and a winner is picked using a
-        standard depth test. This makes the pipeline highly senstive to extra
+        standard depth test. This makes the pipeline highly sensitive to extra
         latency on any of the workers, because everyone is waiting for the
         results to run the depth test.
 
@@ -1829,7 +1829,7 @@ As mentioned in Section \ref{networkhop}, it is possible that a quick prepass
 rendering could help alleviate this problem. If we have information about the
 layout of the scene in image space prior to rendering, we have some opportunities
 for moving things around to adjust the workload before it becomes a problem during
-rendering. It is also possible that additional statisics monitoring could provide
+rendering. It is also possible that additional statistics monitoring could provide
 on-the-fly migration of scene data to less loaded workers, although that would
 require at least partially rebuilding the acceleration structure.
 
