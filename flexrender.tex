@@ -1406,13 +1406,14 @@ geometry it controlled.
 \section{Experimental Setup}
 \label{setup}
 
-For testing, we used 8 HP xw6400 workstations with dual-core Intel Core 2 Duo E8400
-processors clocked at 3 GHz. Each workstation had 4 GB of system RAM, a 4 GB
+For testing, we used 2-16 Dell T3500 workstations with dual-core Intel Xeon
+W3503 CPUs clocked at 2.4 GHz. Each workstation had 4 GB of system RAM, a 4 GB
 swap partition, and was running CentOS 6.
 
-On the software side, FlexRender consists of slightly over 13,000 lines of code. Of
+On the software side, FlexRender consists of around 14,000 lines of code. Of
 that, 80\% is C++ (with fairly extensive use of C++11), 17\% is Lua (scene and
-shader support libraries), and 3\% is Bash script used for building library dependencies.
+shader support libraries), and 3\% is Bash script used for building library
+dependencies.
 
 We leverage several popular open source libraries:
 
@@ -1449,11 +1450,20 @@ The traditional method works by chopping up the image into several vertical
 slices, with a different machine responsible for each slice. The slices are
 then reassembled to form the final output image.
 
-The time for each machine to complete each phase of rendering (loading the
-scene, building the BVH, and rendering its slice of the image) is shown
-in \ref{tb:traditionaltimes}. In particular, the total length of the render
-would take 1868 seconds (the slowest time), because the last slice is needed
-before the final image can be reassembled.
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=120mm]{images/toystore-sliced.png}
+    \captionfonts
+    \caption{Slices of the Toy Store scene rendered with 8 machines in the traditional configuration.}
+    \label{fig:toystore}
+\end{figure}
+
+For reference, we ran the traditional method with 8 workers and report time for
+each machine to complete each phase of rendering (loading the scene, building
+the BVH, and rendering its slice of the image) in Table \ref{tb:traditionaltimes}.
+In particular, the total length of the render would take 10,061 seconds (the
+slowest time), because the last slice is needed before the final image can be
+reassembled.
 
 \begin{table}
 \begin{center}
@@ -1462,14 +1472,14 @@ before the final image can be reassembled.
     & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 \\
     \hline
     \hline
-    Loading & 302 & 306 & 307 & 303 & 291 & 303 & 305 & 309 \\
+    Loading & 288 & 290 & 290 & 289 & 295 & 290 & 287 & 294 \\
     \hline
-    Building BVH & 188 & 201 & 193 & 202 & 214 & 208 & 190 & 208 \\
+    Building BVH & 169 & 172 & 167 & 261 & 174 & 192 & 165 & 171 \\
     \hline
-    Rendering & 432 & 652 & 953 & 1363 & 955 & 805 & 619 & 324 \\
+    Rendering & 533 & 1119 & 1491 & 9511 & 1792 & 677 & 1109 & 303 \\
     \hline
     \hline
-    Total & 922 & 1159 & 1453 & 1868 & 1460 & 1316 & 1114 & 841 \\
+    Total & 990 & 1581 & 1948 & 10061 & 2261 & 1159 & 1561 & 768 \\
     \hline
 \end{tabular}
 \caption{Time (in seconds) for individual workers to complete each phase using the traditional method.}
@@ -1480,11 +1490,6 @@ before the final image can be reassembled.
 \subsection{FlexRender}
 \label{toystoreflexrender}
 
-FlexRender shows an outstanding speedup in construction of the BVH, due to its
-ability to build it in parallel since each worker has spatially local geometry.
-The render performance is currently slower than it should be due to
-some problems with the test setup that will be rectified over the next few
-days.
 
 \begin{table}
 \begin{center}
