@@ -117,10 +117,11 @@ scenes on commodity hardware.}
 \begin{abstract}
 
 As the quest for more realistic computer graphics marches steadily on, the
-demand for rich and detailed imagery is greater than ever. Unfortunately, our
-appetite for large and complex geometry is quickly outpacing advances in the
-hardware used to render it. Scenes with hundreds of millions or even billions
-of polygons are not only desired, they are demanded.
+demand for rich and detailed imagery is greater than ever. However, the current
+``sweet spot" in terms of price, power consumption, and performance is in
+commodity hardware. If we desire to render scenes with tens or hundreds of millions
+of polygons as cheaply as possible, we need a way of doing so that maximizes
+the use of the commodity hardware we already have at our disposal.
 
 Techniques such as normal mapping and level of detail have attempted to address
 the problem by reducing the amount of geometry in a scene. This is problematic
@@ -136,8 +137,6 @@ enabling the construction of hierarchical spatial acceleration structures in
 parallel. The results of our implementation show roughly an order of magnitude
 speedup in rendering time compared the traditional approach, while keeping
 memory overhead for message queuing around 1\%.
-
-\textbf{TODO: motivate commodidy machines (price/performance ratio, you already have it, etc.}
 
 \end{abstract}
 
