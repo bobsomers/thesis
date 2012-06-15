@@ -133,13 +133,11 @@ We propose a distributed rendering architecture based on message-passing that
 is designed to partition scene geometry across a cluster of commodity machines
 in a spatially coherent way, allowing the entire scene to remain in-core and
 enabling the construction of hierarchical spatial acceleration structures in
-parallel. The results of our implementation show over an order of magnitude
+parallel. The results of our implementation show roughly an order of magnitude
 speedup in rendering time compared the traditional approach, while keeping
 memory overhead for message queuing around 1\%.
 
 \textbf{TODO: motivate commodidy machines (price/performance ratio, you already have it, etc.}
-
-\textbf{TODO: bring claims in line with results}
 
 \end{abstract}
 
@@ -279,12 +277,10 @@ Thus, our work describes the following core contributions:
         implementation.
 \end{enumerate}
 
-In particular, we show that FlexRender can achieve speedups that exceed an
-order of magnitude over the traditional parallelization approach, and can
+In particular, we show that FlexRender can achieve speedups that are around an
+order of magnitude better than the traditional parallelization approach, and can
 naturally self-regulate the cluster of workers to keep the memory overhead due
 to message queuing around 1\% of each worker's system memory.
-
-\textbf{TODO: bring claims in line with results}
 
 \chapter{Background}
 \label{background}
@@ -541,10 +537,10 @@ most-significant to least-significant bit.
 Finding ways to deal with huge geometry has been a common theme in Computer
 Graphics for quite a while. Early techniques generally focused on faking
 high detail through clever use of textures and model swapping, since the
-hardware of the day simply wasn't capable of handling massive amounts of data.
+hardware of the day simply was not capable of handling massive amounts of data.
 
 More recently, techniques have focused around actually having the the full
-geometry available, but acknowledging that it won't fit in main memory and
+geometry available, but acknowledging that it will not fit in main memory and
 providing methods for efficiently caching data that is out-of-core.
 
 We examine these workarounds in Section \ref{workarounds}, and provide a brief
@@ -579,7 +575,7 @@ showed how this could be done with two meshes that were created independently.
 
 Normal mapping is extensively used today, especially in real-time graphics
 applications. However, it displays visual artifacts, particularly around the
-edges of the mesh (where it's clearly apparent the surface is not high detail)
+edges of the mesh (where it is clearly apparent the surface is not high detail)
 or areas where the texture is scrunched or streched.
 
 \subsection{Level of Detail}
@@ -601,7 +597,7 @@ screen it could very well still be quite large when viewed.
 \subsection{Out-of-Core}
 \label{outofcore}
 
-Recent research have acknowledged that rendering data simply won't fit into
+Recent research have acknowledged that rendering data simply will not fit into
 main memory any more, and have developed techniques for efficiently managing
 a cache of rendering data in main memory. In 2011, Tabellion et al. \cite{tabellion:2011}
 presented a technique for dealing with huge point clouds used in global
@@ -873,7 +869,7 @@ In general, rendering with FlexRender proceeds in the following way:
         a final image.
 \end{enumerate}
 
-In the next few sections, we'll examine each part of this process in greater
+In the next few sections, we will examine each part of this process in greater
 detail.
 
 \section{Render Preparation}
@@ -1165,7 +1161,7 @@ its bounds against the ray.
 Let's say this also passes. However, the ray intersects the bounds at a distance
 of 20 units along the ray. The closest an intersection on worker E could
 possibly occur is further away, so there is no point to sending the ray to
-worker E. Thus, we don't send the ray to worker E and continue to traverse up
+worker E. Thus, we do not send the ray to worker E and continue to traverse up
 the tree until we reach the root again.
 
 \begin{figure}[H]
@@ -1188,7 +1184,7 @@ the tree before being sure of its intersection point.
 In addition, there are two interesting corner cases to consider.
 
 \begin{itemize}
-    \item If the ray is generated on a node that it doesn't intersect until
+    \item If the ray is generated on a node that it does not intersect until
         later in the traversal, it consumes one additional network hop at the
         very beginning of the traversal.
     \item If the ray completes its traversal on a worker different from that
@@ -1464,9 +1460,9 @@ depth limit of 3 bounces.
 \section{Render Time}
 \label{rendertime}
 
-For discussing render time speedups, we'll consider the specific case of 8
+For discussing render time speedups, we will consider the specific case of 8
 workers in the traditional configuration vs. 8 workers in the FlexRender
-configuration. We'll cover other cluster sizes in less depth in Section
+configuration. We will cover other cluster sizes in less depth in Section
 \ref{clustersize}.
 
 \subsection{Traditional Method}
@@ -1584,7 +1580,22 @@ The one worker which did not contain very much geometry was in the top corner
 of the Toy Store closest to the camera. This octant of the scene only contained
 a fill light facing the rest of the geometry.
 
-\textbf{TODO: geometry distribution table}
+\begin{table}
+\begin{center}
+\begin{tabular}{|l||c|c|c|c|c|c|c|c|}
+    \hline
+    & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 \\
+    \hline
+    \hline
+    Geometry Size (MB) & 162 & 183 & 221 & 202 & 133 & 106 & 107 & 0 \\
+    \hline
+    BVH Size (MB) & 742 & 837 & 1007 & 922 & 607 & 486 & 488 & 0 \\
+    \hline
+\end{tabular}
+\caption{Distribution of geometry and acceleration structure data based on storage requirements.}
+\label{tb:geomsize}
+\end{center}
+\end{table}
 
 \section{Network Hops}
 \label{nethops}
@@ -1594,7 +1605,19 @@ a ray across the network when we know it ventures into that worker's region
 of space. Since a BVH is a $O(log\;n)$ data structure, we expect that with 8
 workers the average ray would be handled by 3 workers during its lifetime.
 
-\textbf{TODO: workers touched table}
+\begin{table}
+\begin{center}
+\begin{tabular}{|r||c|c|c|c|c|c|c|c|}
+    \hline
+    Num. of Workers& 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8+ \\
+    \hline
+    Pct. of Rays & 15.8\% & 25.6\% & 21.8\% & 18.8\% & 8.9\% & 7.4\% & 1.5\% & 0.2\% \\
+    \hline
+\end{tabular}
+\caption{Percentage of rays that were processed by the given number of workers.}
+\label{tb:nethopspercent}
+\end{center}
+\end{table}
 
 Our results show that 63.2\% of rays are handled by 3 workers or less, and
 nearly 16\% of them never even go out over the network (they are generated on,
@@ -1682,9 +1705,54 @@ working well to keep the cluster from generating more work than it can handle.
 \section{Cluster Size}
 \label{clustersize}
 
-\textbf{TODO: commentary}
+To evaluate the scalability of the FlexRender architecture, we ran Toy Store
+renders with cluster sizes of 4 workers, 8 workers, and 16 workers. For
+comparison, we ran the same renders in the traditional configuration also of
+4, 8, and 16 workers.
 
-\textbf{TODO: cluster size table}
+As Table \ref{tb:clustersize} shows, we see a continual and impressive
+improvement in the BVH construction time as the number of workers increases.
+This is the thanks to the huge parallelization speedup we get from partitioning
+the scene geometry with Morton coding and building each subtree in parallel.
+
+We also see render time improvements of roughly an order of magnitude, depending
+on how FlexRender chooses to distribute the geometry based on the number of workers
+available. It is likely that this performance advantage will slowly erode as the
+cluster size grows larger (due to increasing network communication costs), but
+for small to medium cluster sizes we see approximately linear growth.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l||c|c|c|}
+    \hline
+    & 4 Workers & 8 Workers & 16 Workers \\
+    \hline
+    \hline
+    BVH Build (trad.) & 203 sec & 184 sec & 171 sec \\
+    \hline
+    BVH Build (flex.) & 39 sec & 20 sec & 10 sec \\
+    \hline
+    \textbf{BVH Build (speedup)} & \textbf{5.21x} & \textbf{9.20x} & \textbf{17.1x} \\
+    \hline
+    \hline
+    Total Render (trad.) & 14833 sec & 10061 sec & 7702 sec \\
+    \hline
+    Total Render (flex.) & 1742 sec & 1532 sec & 970 sec \\
+    \hline
+    \textbf{Total Render (speedup)} & \textbf{8.51x} & \textbf{6.57x} & \textbf{7.94x} \\
+    \hline
+    \hline
+    Render w/o Load (trad.) & 14536 sec & 9800 sec & 7413 sec \\
+    \hline
+    Render w/o Load (flex.) & 1405 sec & 1206 sec & 540 sec \\
+    \hline
+    \textbf{Render w/o Load (speedup)} & \textbf{10.35x} & \textbf{8.13x} & \textbf{13.73x} \\
+    \hline
+\end{tabular}
+\caption{Comparison of cluster sizes with both the traditional configuration and the FlexRender configuration.}
+\label{tb:clustersize}
+\end{center}
+\end{table}
 
 \chapter{Future Work}
 \label{futurework}
