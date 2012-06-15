@@ -1503,9 +1503,13 @@ could potentially offer significantly better results.
 \section{System Optimizations}
 \label{optimizations}
 
-We present three potential optimizations. Two would deter or eliminate the
-extra network hops in BVH traversal, and the third would provide better
-geometry distribution and more parallelism.
+We present several potential optimizations. In Section \ref{networkhop} we
+discuss a potential method to deter or eliminate the extra network hops in BVH
+traversal, and in Section \ref{concerns} we discuss some underlying issues that,
+if addressed, would yield better geometry distribution and parallelism.
+
+\subsection{Eliminating Extra Network Hops}
+\label{networkhop}
 
 The first extra network hop occurs when rays are generated on machines that
 control geometry they do not intersect with. This requires at least one
@@ -1525,7 +1529,21 @@ any worker would be capable of shading a ray at the conclusion of its BVH traver
 This is possible because the rays carry along local geometry (mainly the surface
 normal) from the point of closest intersection.
 
-Lastly, we believe, in retrospect, that the Morton coding and Z-order curve was
+\subsection{Competing Concerns}
+\label{concerns}
+
+Currently there are two competing concerns in FlexRender. The first is to
+distribute the scene data well, such that the geometry distribution is balanced
+and everything is in-core. The second is to ``keep the chips hot", or maximize
+the utilization of the available processing power in the cluster. Unfortunately,
+these concerns are somewhat at odds at the moment. Good geometry distribution
+is a result of distributing 3D space well, whereas good workload distribution
+is a result of distributing screen space well. It is not immediately clear if
+these two competing concerns can be addressed by a single renderer, but we
+believe significant improvements could be made to both the geometry distribution
+and the workload distribution that would significantly improve the state of affairs.
+
+In retrospect, we believe that the Morton coding and Z-order curve was
 a poor choice for the distribution of geometry. It was initially chosen because
 we did not want to require a preprocessing (or \emph{baking}) step for
 determining the optimal distribution of geometry. Since the scene was presumably
@@ -1535,13 +1553,24 @@ was deemed to be against the spirit of the problem.
 The Z-order curve works well for spatially uniform scenes, but unfortunately a
 lot of scenes that are interesting to render are usually uniformly distributed
 in image space, not 3D space. The leads to a lot of degenerate scenes that
-perform suboptimally when rendered with FlexRender.
+perform suboptimally when rendered with FlexRender. There would be a lot more
+opportunities for distributing geometry in a more intelligent way if a
+preprocessing step was allowed.
 
-There are lots of opportunities for distributing geometry in a more intelligent
-way if a preprocessing step was allowed. In addition, distribution could be
-designed for not only memory availability, but also for estimated rendering
-workload. This would lead to better parallelism during rendering, a more
-even computational load across the cluster, and better render times.
+Secondly, the workload of rendering a particular piece of geometry falls on
+the machine who is responsible for that geometry. This means that if a single
+piece of geometry takes up a large portion of screen space, it will end up
+being the bottleneck in rendering. Conversely, workers that hold geometry that
+takes up very little screen space could end up contributing very little
+horsepower to the render.
+
+As mentioned in Section \ref{networkhop}, it is possible that a quick prepass
+rendering could help alleviate this problem. If we have information about the
+layout of the scene in image space prior to rendering, we have some opportunities
+for moving things around to adjust the workload before it becomes a problem during
+rendering. It is also possible that additional statisics monitoring could provide
+on-the-fly migration of scene data to less loaded workers, although that would
+require at least partially rebuilding the acceleration structure.
 
 \section{Memory Optimizations}
 \label{memory}
