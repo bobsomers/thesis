@@ -46,9 +46,9 @@
     \usepackage[pdftex,plainpages=false,breaklinks=true,colorlinks=true,urlcolor=blue,citecolor=blue,%
                                        linkcolor=blue,bookmarks=true,bookmarksopen=true,%
                                        bookmarksopenlevel=3,pdfstartview=FitV,
-                                       pdfauthor=Christopher Gibson,
-                                       pdftitle=Point-Based Color Bleeding With Volumes,
-                                       pdfkeywords={thesis, masters, cal poly, volume rendering, global illumination}
+                                       pdfauthor=Robert Edward Somers,
+                                       pdftitle=FlexRender: A distributed rendering architecture for ray tracing huge scenes on commodity hardware.,
+                                       pdfkeywords={thesis, masters, cal poly, ray tracing, distributed rendering}
                                        ]{hyperref}
     %Options with pdfstartview are FitV, FitB and FitH
     \pdfcompresslevel=1
@@ -1517,9 +1517,46 @@ the final image can be reassembled.
 \subsection{FlexRender}
 \label{toystoreflexrender}
 
-\textbf{TODO: commentary}
+For comparison purposes, we report average times for the traditional workers
+compared to FlexRender for each of the 3 rendering phases in Table
+\ref{flexrendertimes}. We also show FlexRender's speedup over the average case.
 
-\textbf{TODO: render time comparison table}
+We also report the total render time (all three phases combined), using this
+time the slowest traditional worker. This is a fair comparison because even if
+all of the other traditional workers finish quickly, the render is not complete
+until the last worker finishes.
+
+Lastly, we also report the times and speedup excluding the loading and syncing
+phase. The reasoning behind this is that while FlexRender currently reads in
+scene assets at the renderer and distributes them across the network, there is
+no inherent reason why it needs to load the scene this way. Specifically,
+if each worker had access to a shared network storage volume with the scene
+assets on it, The renderer could simply issue commands to each worker
+instructing it to load a particular asset from the network storage.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l||c|c|c|}
+    \hline
+    & Traditional & FlexRender & Speedup \\
+    \hline
+    \hline
+    Loading & 290.4 (avg) & 326 & 0.89x \\
+    \hline
+    Building BVH & 183.6 (avg) & 20 & 9.18x \\
+    \hline
+    Rendering & 2066.9 (avg) & 1186 & 1.74x \\
+    \hline
+    \hline
+    \textbf{Total} & \textbf{10061 (slowest)} & \textbf{1532} & \textbf{6.57x} \\
+    \hline
+    \textbf{Total (w/o loading)} & \textbf{9800 (slowest)} & \textbf{1206} & \textbf{8.13x} \\
+    \hline
+\end{tabular}
+\caption{Time (in seconds) for each phase of rendering with FlexRender and the traditional configuration.}
+\label{tb:flexrendertimes}
+\end{center}
+\end{table}
 
 \begin{figure}[h!]
     \centering
