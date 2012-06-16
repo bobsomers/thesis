@@ -135,7 +135,7 @@ is designed to partition scene geometry across a cluster of commodity machines
 in a spatially coherent way, allowing the entire scene to remain in-core and
 enabling the construction of hierarchical spatial acceleration structures in
 parallel. The results of our implementation show roughly an order of magnitude
-speedup in rendering time compared the traditional approach, while keeping
+speedup in rendering time compared to the traditional approach, while keeping
 memory overhead for message queuing around 1\%.
 
 \end{abstract}
@@ -187,14 +187,14 @@ closer to mimicking physical reality.
 
 At the heart of mimicking reality is describing the world we wish to show. In
 computer graphics, this has traditionally been done by defining surfaces. While
-exciting developments in volume rendering techniques happen on regular basis,
+exciting developments in volume rendering techniques happen on a regular basis,
 it is unlikely we will abandon using surfaces any time soon. Unfortunately for
-volumes, they are inherently an $n^3$ problem (where $n$ is the size of the
-volume in one dimension) and $n^3$ is not a particularly friendly number in the
-field of Computer Science.
+volumes, algorithms that operate on them are inherently $n^3$ (where $n$ is the
+size of the volume in one dimension) and $n^3$ is not a particularly friendly
+number in the field of Computer Science.
 
 For now and the foreseeable future, it seems, surfaces will be our bread and
-butter. Many methods have been developed for describing surfaces to computer
+butter. Many methods have been developed for describing surfaces in computer
 programs, such as level sets, implicitly defined surfaces from mathematical
 equations, and curvilinear forms such as parametric splines. The undisputed
 champion of surface representations, however, has been the polygonal mesh.
@@ -287,11 +287,11 @@ to message queuing around 1\% of each worker's system memory.
 The FlexRender architecture builds on the four fundamental building blocks
 described here. First, we discuss the linearity of light (Section \ref{radiometry}),
 which is critical to understanding why FlexRender produces a correct composite
-image from pieces rendered by different workers. Next, we give a general
+image from pieces rendered by different machines. Next, we give a general
 overview of ray tracing (Section \ref{raytracing}) and bounding volume hierarchies
 (Section \ref{bvhs}). Finally, we discuss Morton coding and the Z-order curve
-(Section \ref{morton}) which FlexRender uses to distribute scene data amongst the
-workers.
+(Section \ref{morton}) which FlexRender uses to distribute scene data amongst
+machines in the cluster.
 
 \section{Light and Radiometry}
 \label{radiometry}
@@ -326,9 +326,9 @@ observations, which FlexRender explicitly exploits:
 
 \begin{description}
     \item[The location of computation does not matter.] If the scene is
-        distributed across many workers, it makes no difference which worker
-        computes the effect of a ray. The sum of all the workers' computations
-        will be the same as if all the work was performed on a single worker.
+        distributed across many machines, it makes no difference which machine
+        computes the effect of a ray. The sum of everyone's computations
+        will be the same as if all the work was performed on a single machine.
     \item[Transmittance models energy conservation.] If we store the amount of
         energy traveling along a ray (the \emph{transmittance}) with the ray
         itself, we need not know anything about the preceding rays or state
@@ -371,7 +371,7 @@ surface normal at the point of intersection.
 \end{figure}
 
 Ray tracing has significant advantages over other rendering algorithms (such
-as scanline rasterization) because of it more closely models the way light acts
+as scanline rasterization) because it more closely models the way light acts
 in the real world. Effects that are difficult to simulate using other methods
 (such as shadows and correct reflections) fall out of the the algorithm naturally,
 making it an attractive choice.
@@ -431,7 +431,7 @@ traversal. This means that the left-hand child of the node at index $n$ is
 located at index $n + 1$ in the array of nodes. Each node stores an offset
 index to its right-hand child. Because the indices are relative to the array
 and not the array's location in memory, they are safe to pass back and forth
-between workers and require no address translation.
+between different machines and require no address translation.
 
 To traverse the tree looking for intersections, we begin by testing the root
 node's bounding volume for an intersection. If the ray intersects the volume,
@@ -441,7 +441,7 @@ hits the primitive.
 
 The traversal algorithm is naturally recursive, but recursive implementations
 keep their state on the call stack. In FlexRender, we may need to suspend the
-traversal on one worker and resume it on another, so we need all of the
+traversal on one machine and resume it on another, so we need all of the
 traversal state explicitly exposed. Refactoring it as an iterative traversal
 explicitly exposes the state for capturing.
 
@@ -465,7 +465,7 @@ FlexRender leverages this traversal algorithm due it its low state storage
 requirements. Each ray only needs to know the index of the current node it is
 traversing (in the array of flattened nodes) and the state of the traversal
 automaton. The extensions made to the algorithm to support suspending traversal
-and resuming it on another worker are described in Section \ref{traversal}.
+and resuming it on another machine are described in Section \ref{traversal}.
 
 \section{Morton Coding and the Z-Order Curve}
 \label{morton}
@@ -482,16 +482,16 @@ Morton coding produces a space-filling Z-order curve.
     \label{fig:zorder}
 \end{figure}
 
-More concretely, FlexRender needs a way to distribute a large scene to many
-workers in a spatially coherent way. If the geometry on each worker consists
-of a localized patch of the overall geometry, it allows us minimize communication
-between the workers, and thus, only pay the network cost when we absolutely need
-to (described in depth in Section \ref{traversal}).
+More concretely, FlexRender needs a way to distribute a large scene to all the
+machines in the cluster in a spatially coherent way. If the geometry on each
+machine consists of a localized patch of the overall geometry, it allows us to
+minimize communication between the machines, and thus, only pay the network cost
+when we absolutely need to (described in depth in Section \ref{traversal}).
 
 Because the Morton coding produces a spatially coherent traversal of 3D space,
-dividing up the 1D Morton code address space among all the workers participating
+dividing up the 1D Morton code address space among all the machines participating
 in the render gives a reasonable assurance of spatial locality for the geometry
-sent to each worker.
+sent to each machine.
 
 The Morton coding is relatively simple to implement. For example, say that
 we wish to map a point $P$ in a region of 3D space (defined by its bounding extents
