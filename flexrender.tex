@@ -1512,7 +1512,7 @@ the final image can be reassembled.
 
 For comparison purposes, we report average times for the traditional workers
 compared to FlexRender for each of the 3 rendering phases in Table
-\ref{flexrendertimes}. We also show FlexRender's speedup over the average case.
+\ref{tb:flexrendertimes}. We also show FlexRender's speedup over the average case.
 
 We also report the total render time (all three phases combined), using this
 time the slowest traditional worker. This is a fair comparison because even if
@@ -1524,7 +1524,7 @@ phase. The reasoning behind this is that while FlexRender currently reads in
 scene assets at the renderer and distributes them across the network, there is
 no inherent reason why it needs to load the scene this way. Specifically,
 if each worker had access to a shared network storage volume with the scene
-assets on it, The renderer could simply issue commands to each worker
+assets on it, the renderer could simply issue commands to each worker
 instructing it to load a particular asset from the network storage.
 
 \begin{table}
@@ -1623,7 +1623,7 @@ nearly 16\% of them never even go out over the network (they are generated on,
 intersect with, and are shaded on a single worker). We also see that 36.8\% of
 rays must touch more than the expected 3 workers.
 
-However, if we include the edge cases mentioned in \ref{traversal}, we see that
+However, if we include the corner cases mentioned in \ref{traversal}, we see that
 82\% of rays are at or below $O((log\;n) + 1)$ and 90.9\% of rays are at or
 below $O((log\;n) + 2)$. In Section \ref{networkhop} we discuss some potential
 methods for reducing or removing these extra network hops.
@@ -1711,7 +1711,7 @@ comparison, we ran the same renders in the traditional configuration also of
 
 As Table \ref{tb:clustersize} shows, we see a continual and impressive
 improvement in the BVH construction time as the number of workers increases.
-This is the thanks to the huge parallelization speedup we get from partitioning
+This is thanks to the huge parallelization speedup we get from partitioning
 the scene geometry with Morton coding and building each subtree in parallel.
 
 We also see render time improvements of roughly an order of magnitude, depending
@@ -1752,6 +1752,29 @@ for small to medium cluster sizes we see approximately linear growth.
 \label{tb:clustersize}
 \end{center}
 \end{table}
+
+\section{Summary}
+\label{resultssummary}
+
+With these results, we have demonstrated that FlexRender meets our claimed
+contributions in the following ways. 
+
+\begin{itemize}
+    \item The scene geometry and acceleration structure data stays in-core due
+        to effective scene distribution.
+    \item Rays carry enough state to never require replies and the generated
+        images match our baseline implementation.
+    \item We can correctly and efficiently traverse the scene when workers
+        only contain spatially local BVHs, linked by a top-level BVH.
+    \item The top-level BVH effectively reduces the amount of network
+        communication necessary to render the scene.
+    \item The system keeps itself regulated and reduces memory usage by
+        throttling new work generation and processing rays in an intelligent
+        order.
+    \item We show consistent speedups over the traditional approach, which
+        suffers greatly from having to hit disk frequently during the
+        rendering process.
+\end{itemize}
 
 \chapter{Future Work}
 \label{futurework}
