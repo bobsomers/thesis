@@ -118,7 +118,7 @@ scenes on commodity hardware.}
 
 As the quest for more realistic computer graphics marches steadily on, the
 demand for rich and detailed imagery is greater than ever. However, the current
-``sweet spot" in terms of price, power consumption, and performance is in
+``sweet spot'' in terms of price, power consumption, and performance is in
 commodity hardware. If we desire to render scenes with tens or hundreds of millions
 of polygons as cheaply as possible, we need a way of doing so that maximizes
 the use of the commodity hardware we already have at our disposal.
@@ -232,7 +232,7 @@ In current memory hierarchies, data access time can take anywhere from around
 nanoseconds for main memory). Techniques such as out-of-order execution are
 helpful in filling this wasted time, but for memory intensive applications it
 can be difficult to fill all the gaps with useful work. Thus, keeping the chips
-"hot" by reducing time spent waiting on data is critical to achieve maximum
+``hot'' by reducing time spent waiting on data is critical to achieve maximum
 performance, and is an extremely challenging problem.
 
 \begin{figure}[h!]
@@ -258,7 +258,7 @@ cost to performance ratio, but still typically lacks enough memory to fit large
 scenes entirely in RAM.
 
 Current strategies for parallelizing a renderer across a cluster of commodity
-machines are limited to having each worker compute a separate ``slice" of the
+machines are limited to having each worker compute a separate ``slice'' of the
 image, but do nothing to manage the high cost associated with large scene
 assets.
 
@@ -350,7 +350,7 @@ object that ray intersects is what is seen through the camera at the pixel.
     \centering
     \includegraphics[width=110mm]{figures/raytracing.png}
     \captionfonts
-    \caption{Ray tracing models light by shooting rays into the scene from the camera. Credit: ``Henrik" (Creative Commons License)}
+    \caption{Ray tracing models light by shooting rays into the scene from the camera. Credit: ``Henrik'' (Creative Commons License)}
     \label{fig:raytracing}
 \end{figure}
 
@@ -366,7 +366,7 @@ surface normal at the point of intersection.
     \centering
     \includegraphics[width=90mm]{figures/reflectionrefraction.png}
     \captionfonts
-    \caption{Reflection and refraction are modeled by casting new rays from intersection points. Credit: ``Stannered" (Creative Commons License)}
+    \caption{Reflection and refraction are modeled by casting new rays from intersection points. Credit: ``Stannered'' (Creative Commons License)}
     \label{fig:reflectrefract}
 \end{figure}
 
@@ -412,7 +412,7 @@ intersection searching from linear time $O(n)$ to logarithmic time $O(log\;n)$
     \centering
     \includegraphics[width=140mm]{figures/bvh.png}
     \captionfonts
-    \caption{Bounding volume hierarchies partition primitives into a binary tree structure. Credit: ``Schreiberx" (Creative Commons License)}
+    \caption{Bounding volume hierarchies partition primitives into a binary tree structure. Credit: ``Schreiberx'' (Creative Commons License)}
     \label{fig:bvh}
 \end{figure}
 
@@ -478,7 +478,7 @@ Morton coding produces a space-filling Z-order curve.
     \centering
     \includegraphics[width=110mm]{figures/zorder.png}
     \captionfonts
-    \caption{Examples of two dimensional and three dimensional Z-order curves. Credit: ``David Eppstein" and ``Robert Dickau" (Creative Commons License)}
+    \caption{Examples of two dimensional and three dimensional Z-order curves. Credit: ``David Eppstein'' and ``Robert Dickau'' (Creative Commons License)}
     \label{fig:zorder}
 \end{figure}
 
@@ -609,7 +609,7 @@ software developed for Avatar also was very efficient at dealing with out-of-cor
 data. They used ray tracing to generate directional occlusion data, which was
 compressed into spherical harmonics. The spherical harmonics were used at render
 time (they did not directly ray trace the scenes during rendering). In particular,
-they also used hierarchical BVHs with a single ``top-level" tree as FlexRender
+they also used hierarchical BVHs with a single ``top-level'' tree as FlexRender
 does. However, they used it for chunking the scene into manageable units of work
 that could be loaded and unloaded from main memory quickly.
 
@@ -670,7 +670,7 @@ main differences in our approach.
 
 As interest in General Purpose GPU, or GPGPU, computing has increased over
 the last several years, many have decided to port ray tracers to the
-architecture due to the problem's ``embarrassingly parallel" nature. Although
+architecture due to the problem's ``embarrassingly parallel'' nature. Although
 lots of simple implementations are floating around, only relatively recently
 have researchers started tackling the challenging problems imposed by writing
 a serious ray tracer on a GPGPU architecture device. It may be deceptively
@@ -688,7 +688,7 @@ potentially store up to 32 million rays.
 Another area of intense research has been spatial data structure construction
 on the GPU. Although they usually produce data structures of slightly lower
 quality than their CPU counterparts, these GPU algorithms go to great lengths
-to produce ``high-enough" quality structures with dramatic speedups. Garanzha
+to produce ``high-enough'' quality structures with dramatic speedups. Garanzha
 et al. \cite{garanzha:2011:bvh} present a method for constructing BVHs on the
 GPU and Wu et al. \cite{wu:2011} present a method for constructing KD-trees on
 the GPU. Both are guided by the surface area heuristic.
@@ -844,9 +844,9 @@ In general, rendering with FlexRender proceeds in the following way:
         extents of the entire scene. As data is read in, it is distributed to
         the workers using the Morton coding.
     \item Once the scene is distributed, workers build BVHs in parallel for
-        their respective ``chunk" of the scene. They share their maximum bounding
+        their respective ``chunk'' of the scene. They share their maximum bounding
         extents with the renderer.
-    \item The renderer constructs a ``top-level" BVH from the worker bounds and
+    \item The renderer constructs a ``top-level'' BVH from the worker bounds and
         shares this BVH with all the workers.
     \item Each worker creates its own image buffer. This is where any shading
         data will be written if it occurs on this worker.
@@ -934,7 +934,7 @@ extent of all geometry located on that worker.
 
 Once construction of all the local BVHs is complete, each worker sends its
 total bounding extents to the renderer. Once the renderer has the bounding
-extents of each worker, it constructs a final ``top-level" BVH of the workers.
+extents of each worker, it constructs a final ``top-level'' BVH of the workers.
 The renderer then distributes this top-level BVH to all the workers, so that
 everyone participating has an identical copy of it. This is a very quick and
 lightweight process, since it is only dependent on the number of workers
@@ -1041,7 +1041,7 @@ over primary ray casting for a portion of the scene, we give workers the ability
 to generate work when they have nothing to do.
 
 However, to quote Uncle Ben, ``with great power comes great
-responsibility". Consider the case where a worker contains mostly background
+responsibility''. Consider the case where a worker contains mostly background
 geometry. It will be receiving work from others infrequently because its size
 in screen space is small, but yet it is in charge of casting primary rays for
 a much larger slice of the image. In this case the worker may go on an
@@ -1049,7 +1049,7 @@ unfettered spree of primary ray casting, causing lots of grief for his fellow
 workers since he is essentially generating work for others and little for
 himself.
 
-To prevent this ``runaway" case from overburdening the ray queues, we require
+To prevent this ``runaway'' case from overburdening the ray queues, we require
 that workers report statistics about their progress to the renderer every so
 often (10 times per second in the current implementation). If the renderer
 notices that a worker is getting significantly further ahead of the others in
@@ -1204,7 +1204,7 @@ of rays in the scene.
 \subsection{Illumination}
 \label{illumination}
 
-There is no special ``light" type in FlexRender, rather only meshes that are
+There is no special ``light'' type in FlexRender, rather only meshes that are
 emissive, which is a property set by the assigned material. Meshes that are
 emissive are known to inject light into the scene through a special function in
 their shader which is called to compute that emission. During scene loading,
@@ -1329,7 +1329,7 @@ effects:
 In a traditional recursive ray tracer, determining when the render is complete
 is a simple task. Once the last primary ray pops its final stack frame
 the render is over. In FlexRender, however, no one worker (or the renderer, for
-that matter) knows where the ``last ray" is. To determine when a render is
+that matter) knows where the ``last ray'' is. To determine when a render is
 complete, the workers report rendering statistics to the renderer at regular
 intervals, which are used for deciding when the render is finished. This decision
 metric is discussed in Section \ref{stats}.
@@ -1367,7 +1367,7 @@ consecutive measurement intervals, it is reasonable to assume that the render
 has concluded.
 
 Our current implementation (which reports statistics 10 times per second)
-waits until it sees 10 consecutive intervals of ``uninteresting" activity on
+waits until it sees 10 consecutive intervals of ``uninteresting'' activity on
 the workers before declaring the render complete. We find this achieves a nice
 balance between wanting to end the render as soon as it is legitimately
 finished and risking concluding it too early.
@@ -1375,7 +1375,7 @@ finished and risking concluding it too early.
 \subsection{Image Synthesis}
 \label{synthesis}
 
-Once the render has been deemed ``complete", the renderer requests the image
+Once the render has been deemed ``complete'', the renderer requests the image
 buffers from each worker. Because all rendering was computed by respecting
 linearity, computing a pixel in the final output image is just a matter
 of summing corresponding pixels in the worker buffers.
@@ -1432,7 +1432,7 @@ for tone mapping our output images and computing perceptual diffs respectively.
 \section{Toy Store}
 \label{toystore}
 
-Our test scene, ``Toy Store", has a geometric complexity of nearly 42 million
+Our test scene, ``Toy Store'', has a geometric complexity of nearly 42 million
 triangles. It consists of 1.09 GB of mesh data and 5 GB of BVH data once the
 acceleration structures are built.
 
@@ -1452,7 +1452,7 @@ depth limit of 3 bounces.
     \centering
     \includegraphics[width=140mm]{images/toystore.png}
     \captionfonts
-    \caption{The ``Toy Store" scene used for benchmarking FlexRender.}
+    \caption{The ``Toy Store'' scene used for benchmarking FlexRender.}
     \label{fig:toystore}
 \end{figure}
 
@@ -1784,7 +1784,7 @@ on the worker and finish shading without ever touching the network.
 The second extra network hop occurs at the end of traversal, when the ray finishes
 traversing the top-level BVH but ends up on a worker that is not the point of
 intersection. Because the worker has no shading assets for that geometry, it
-must pass the ray back to the ``winning" worker for shading. By distributing
+must pass the ray back to the ``winning'' worker for shading. By distributing
 all of the shading assets (shaders, textures, and materials) to all workers,
 any worker would be capable of shading a ray at the conclusion of its BVH traversal.
 This is possible because the rays carry along local geometry (mainly the surface
@@ -1795,7 +1795,7 @@ normal) from the point of closest intersection.
 
 Currently there are two competing concerns in FlexRender. The first is to
 distribute the scene data well, such that the geometry distribution is balanced
-and everything is in-core. The second is to ``keep the chips hot", or maximize
+and everything is in-core. The second is to ``keep the chips hot'', or maximize
 the utilization of the available processing power in the cluster. Unfortunately,
 these concerns are somewhat at odds at the moment. Good geometry distribution
 is a result of distributing 3D space well, whereas good workload distribution
@@ -1850,7 +1850,7 @@ Lastly, there are a few places where the size of fat rays could be reduced.
 For example, rather than storing the target position of an expected
 intersection, the expected t value along the ray could be stored instead. This
 would save 8 bytes. Another 4 bytes could be saved by removing the ``workers
-touched" benchmarking field. By careful overlapping of mutually exclusive data
+touched'' benchmarking field. By careful overlapping of mutually exclusive data
 using unions, the size could probably be reduced further. Ideally a fat ray
 would fit on a single cache line and the same aligned allocation strategy could
 be applied to fat rays as well.
