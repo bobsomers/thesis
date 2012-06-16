@@ -533,12 +533,12 @@ most-significant to least-significant bit.
 \chapter{Related Work}
 \label{relatedwork}
 
-Finding ways to deal with huge geometry has been a common theme in Computer
-Graphics for quite a while. Early techniques generally focused on faking
+Finding ways to deal with huge geometry has been a common theme in computer
+graphics for quite a while. Early techniques generally focused on faking
 high detail through clever use of textures and model swapping, since the
 hardware of the day simply was not capable of handling massive amounts of data.
 
-More recently, techniques have focused around actually having the the full
+More recently, techniques have focused around actually having the full
 geometry available, but acknowledging that it will not fit in main memory and
 providing methods for efficiently caching data that is out-of-core.
 
@@ -589,7 +589,7 @@ resulting representation on the screen was tiny.
 This technique is also still heavily used in real-time graphics applications
 today. However it suffers from a few problems. The first is that multiple
 resolutions of the mesh must be available. The second is that it is somewhat
-depending on the size that the final image is viewed. A mesh may be small in
+dependent on the size that the final image is viewed. A mesh may be small in
 screen space compared to the size of the image, but on a movie-theater sized
 screen it could very well still be quite large when viewed.
 
@@ -628,7 +628,7 @@ main differences in our approach.
 \begin{description}
     \item[Geometry Distribution] \hfill \\
         Kilauea randomly distributes scene geometry to
-        its workers, the casts intersections rays through all workers
+        its workers, then casts intersections rays through all workers
         simultaneously. This may produce multiple candidate intersections. The
         results from each worker are gathered and a winner is picked using a
         standard depth test. This makes the pipeline highly sensitive to extra
@@ -636,7 +636,7 @@ main differences in our approach.
         results to run the depth test.
 
         In contrast, FlexRender attempts to keep geometry spatially local among
-        its workers. This allows us to build a hierarchical spatial acceleration
+        its worker machines. This allows us to build a hierarchical spatial acceleration
         structure over the workers and reduce the number of network hops we need
         to make to establish the correct intersection.
     \item[Shading Secondary Rays] \hfill \\
@@ -681,7 +681,7 @@ Probably the most impressive recent work was done by Garanzha et al.
 \cite{garanzha:2011:ray}, which presented a method for ray tracing large scenes that
 are out-of-core on the GPU. Parts of their architecture are similar to FlexRender
 on a single-device scale, specifically their use of multi-level BVHs for data that
-is paged into memory and their use or ray queues to handle rays cast from shaders.
+is paged into memory and their use of ray queues to handle rays cast from shaders.
 Their global ray queue, however, is fairly memory intensive, because it can
 potentially store up to 32 million rays.
 
