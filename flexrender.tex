@@ -756,7 +756,7 @@ From a network perspective, the architecture is simply client/server connected
 in a star topology. Each worker exposes a server which receives and
 processes messages, and holds client connections open to every other worker for
 passing messages around the cluster. The renderer also holds a client connection
-to every worker for sending configuration data, preparing up the cluster for rendering
+to every worker for sending configuration data, preparing the cluster for rendering
 (described in Section \ref{sync}), and monitoring render progress (described in
 Section \ref{stats}).
 
@@ -856,7 +856,7 @@ In general, rendering with FlexRender proceeds in the following way:
             \item During intersection testing, rays may be forwarded over the
                 network to another worker if they travel through the bounding
                 extents of that worker.
-            \item Once the nearest intersection is found illumination rays are
+            \item Once the nearest intersection is found illumination ray messages are
                 created and sent to workers that have lights. These workers
                 send light rays back towards the point of intersection to test
                 for occlusion.
@@ -922,7 +922,7 @@ carefully throwing out any geometry that is not within their Morton bounds.
 
 To accelerate intersection testing against each mesh, each worker first
 constructs a BVH for every mesh it has. These BVHs are tied directly to the mesh
-they accelerate. While building each BVH, the worker stores a list of the bounding
+they represent. While building each BVH, the worker stores a list of the bounding
 extents of each mesh.
 
 Next, each worker builds a root BVH for the entire worker, which uses the mesh
@@ -959,7 +959,7 @@ are three different types of rays in FlexRender:
 \begin{itemize}
    \item \textbf{Intersection rays} are rays whose sole purpose is to identify
       a point in space at which we would like to compute shading.
-   \item \textbf{Illumination rays} are essentially copies of intersection
+   \item \textbf{Illumination ray messages} are essentially copies of intersection
       rays that have terminated. They are sent to workers who have emissive
       geometry (described in Section \ref{illumination}).
    \item \textbf{Light rays} are Monte Carlo samples that contribute direct
@@ -982,8 +982,8 @@ is as follows:
 \begin{enumerate}
    \item An intersection ray is cast into the scene.
    \item When that intersection ray terminates at a point in space, it dies and
-      spawns illumination rays.
-   \item When those illumination rays reach their destination, they die and
+      spawns illumination ray messages.
+   \item When those illumination ray messages reach their destination, they die and
       spawn light rays.
    \item When those light rays terminate at a point in space, a shading value
       is computed.
@@ -1238,9 +1238,9 @@ following operations:
 
 \begin{enumerate}
     \item At the worker where an intersection was found, copy the ray data into
-        an illumination ray with the target set to the point of intersection.
-    \item Send this illumination ray to all workers known to have emissive meshes.
-    \item When a worker receives an illumination ray, generate sample points
+        an illumination ray message with the target set to the point of intersection.
+    \item Send this illumination ray message to all workers known to have emissive meshes.
+    \item When a worker receives an illumination ray message, generate sample points
         across the surface of all emissive meshes. Set these sample points as
         the origins for new light rays.
     \item Set the directions of all the light rays such that they are pointed
@@ -1351,11 +1351,11 @@ statistics are useful for determining if the render has finished:
       that have been cast into the scene.
    \item[Rays Produced] The number of rays created at the worker during this
       measurement interval. This includes new intersection rays cast from the
-      camera or a shader, illumination rays created by terminating intersection
-      rays, or light rays created by processing illumination rays.
+      camera or a shader, illumination ray messages created by terminating intersection
+      rays, or light rays created by processing illumination ray messages.
    \item[Rays Killed] The number of rays finalized at the worker during this
       measurement interval. This includes intersection rays that terminated or
-      did not hit anything, illumination rays that were destroyed after spawning
+      did not hit anything, illumination ray messages that were destroyed after spawning
       light rays, or light rays whose final shading value was computed.
    \item[Rays Queued] The number of rays currently in this worker's ray queue.
 \end{description}
