@@ -1753,6 +1753,72 @@ for small to medium cluster sizes we see approximately linear growth.
 \end{center}
 \end{table}
 
+\section{Example Renders}
+\label{examplerenders}
+
+Figure \ref{fig:sotoystore} shows the final Toy Store scene render, with 42 million
+triangles and nearly 1,300 models.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=140mm]{showoff/toystore.png}
+    \captionfonts
+    \caption{Toy Store scene that is comprised of nearly 1,300 models and 42 million triangles.}
+    \label{fig:sotoystore}
+\end{figure}
+
+Figure \ref{fig:sofield} shows a render with even higher resolution models,
+bringing the geometric complexity up to 87 million triangles.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=140mm]{showoff/field.png}
+    \captionfonts
+    \caption{Field of high resolution models with nearly 87 million triangles.}
+    \label{fig:sofield}
+\end{figure}
+
+Figure \ref{fig:sodist} shows a monochromatic Cornell Box rendered by two workers.
+The final composite is on the left, while the individual image buffers are on the right.
+With only direct lighting and no reflections, this clearly demonstrates which
+geometry was assigned to each worker.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=140mm]{showoff/distribution.png}
+    \captionfonts
+    \caption{A monochromatic Cornell Box, showing the distribution of geometry between two workers.}
+    \label{fig:sodist}
+\end{figure}
+
+Figure \ref{fig:socornell} demonstrates FlexRender's Lua-based shader system. The
+Stanford bunny model is toon shaded, while the Buddha model has a perfect mirror
+finish. Reflection rays for the mirrored Buddha and floor are cast directly
+from the shaders.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=140mm]{showoff/cornell-models.png}
+    \captionfonts
+    \caption{A Cornell Box with a toon shaded Stanford bunny and mirrored Buddha.}
+    \label{fig:socornell}
+\end{figure}
+
+Figure \ref{fig:sogi} shows an example of a Monte Carlo global illumination shader,
+as rendered by two workers. At first it appears that the geometry is present on
+all workers. However, the lighting tells the full story. The geometry is split
+the same way as in Figure \ref{fig:sodist}. Each worker image contains direct
+light for the geometry on that worker, as well as indirect light \emph{reflected by}
+geometry on that worker.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=140mm]{showoff/gi.png}
+    \captionfonts
+    \caption{A Cornell Box with a Monte Carlo global illumination shader. The top row shows individual worker renders, the bottom center is the final composite. Each worker has direct light for the geometry on its machine and indirect light caused by the geometry on its machine.}
+    \label{fig:sogi}
+\end{figure}
+
 \section{Summary}
 \label{resultssummary}
 
@@ -1902,47 +1968,5 @@ the cost of bus transfers in GPGPU computing.
 \bibliography{flexrender}
 \bibliographystyle{plain}
 %\addcontentsline{toc}{chapter}{Bibliography}
-
-\section*{Image Results}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=140mm]{showoff/toystore.png}
-    \captionfonts
-    \caption{Toy Store scene that is comprised of nearly 1,300 models and 42 million triangles.}
-    \label{fig:sotoystore}
-\end{figure}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=140mm]{showoff/field.png}
-    \captionfonts
-    \caption{Field of high resolution models with nearly 87 million triangles.}
-    \label{fig:sofield}
-\end{figure}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=140mm]{showoff/distribution.png}
-    \captionfonts
-    \caption{A monochromatic Cornell Box, showing the distribution of geometry between two workers.}
-    \label{fig:sodist}
-\end{figure}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=140mm]{showoff/cornell-models.png}
-    \captionfonts
-    \caption{A Cornell Box with a toon shaded Stanford bunny and mirrored Buddha.}
-    \label{fig:socornell}
-\end{figure}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=140mm]{showoff/gi.png}
-    \captionfonts
-    \caption{A Cornell Box with a Monte Carlo global illumination shader. The top row shows individual worker renders, the bottom center is the final composite. Each worker has direct light for the geometry on its machine and indirect light caused by the geometry on its machine.}
-    \label{fig:sogi}
-\end{figure}
 
 \end{document} much faster 
